@@ -15,6 +15,10 @@ import {
   Info
 } from 'lucide-react'
 
+// ============================================================================
+// CONSTANTS & CONFIGURATIONS
+// ============================================================================
+
 const API_BASE_URL = 'http://localhost:5000/api';
 
 const FALLBACK_REQUESTS = [
@@ -42,10 +46,43 @@ const RECENT_ACTIVITIES = [
   { id: 4, text: 'New request registered for AST-101', time: '4 hours ago' }
 ];
 
-// Kanban Card Component Memoized to render columns smoothly
+// ============================================================================
+// HELPERS
+// ============================================================================
+
+/**
+ * Returns color classes representing incident priority status
+ */
+const getPriorityBadgeStyle = (priority) => {
+  switch (priority) {
+    case 'Emergency':
+      return 'bg-red-500/20 text-red-500 border border-red-500/20';
+    case 'High':
+      return 'text-yellow-400 bg-yellow-500/10';
+    case 'Medium':
+      return 'text-blue-400 bg-blue-500/10';
+    default:
+      return 'text-slate-400 bg-slate-500/10';
+  }
+};
+
+// ============================================================================
+// SUB-COMPONENTS
+// ============================================================================
+
+/**
+ * Single job entry card, memoized to optimize Kanban updates rendering
+ */
 const KanbanCard = React.memo(({ req, onMove, onDetails, onHistory }) => {
-  const handleKeyDown = (e) => {
-    // Accessibility shortcuts
+  const handleMove = useCallback((e) => {
+    e.stopPropagation();
+    onMove(req.id);
+  }, [req.id, onMove]);
+
+  const handleDetails = useCallback(() => onDetails(req), [req, onDetails]);
+  const handleHistory = useCallback(() => onHistory(req), [req, onHistory]);
+
+  const handleKeyDown = useCallback((e) => {
     if (e.key === 'm' || e.key === 'M') {
       e.preventDefault();
       onMove(req.id);
@@ -56,7 +93,9 @@ const KanbanCard = React.memo(({ req, onMove, onDetails, onHistory }) => {
       e.preventDefault();
       onHistory(req);
     }
-  };
+  }, [req, onMove, onDetails, onHistory]);
+
+  const priorityStyle = useMemo(() => getPriorityBadgeStyle(req.priority), [req.priority]);
 
   return (
     <div
@@ -67,12 +106,7 @@ const KanbanCard = React.memo(({ req, onMove, onDetails, onHistory }) => {
     >
       <div className="flex items-center justify-between">
         <span className="text-[10px] font-mono text-[#94A3B8] font-bold">{req.id}</span>
-        <span className={`text-[9px] uppercase font-extrabold px-1.5 py-0.5 rounded ${
-          req.priority === 'Emergency' ? 'bg-red-500/20 text-red-500 border border-red-500/20' :
-          req.priority === 'High' ? 'text-yellow-400 bg-yellow-500/10' :
-          req.priority === 'Medium' ? 'text-blue-400 bg-blue-500/10' :
-          'text-slate-400 bg-slate-500/10'
-        }`}>
+        <span className={`text-[9px] uppercase font-extrabold px-1.5 py-0.5 rounded ${priorityStyle}`}>
           {req.priority}
         </span>
       </div>
@@ -103,10 +137,9 @@ const KanbanCard = React.memo(({ req, onMove, onDetails, onHistory }) => {
         </div>
       </div>
 
-      {/* Button Controls */}
       <div className="grid grid-cols-3 gap-1 mt-2.5 pt-2.5 border-t border-[#334155]/40 text-center">
         <button 
-          onClick={(e) => { e.stopPropagation(); onMove(req.id); }} 
+          onClick={handleMove} 
           className="flex items-center justify-center gap-0.5 border border-[#334155]/80 hover:bg-[#2962FF]/10 text-white rounded py-1 px-0.5 text-[9px] font-bold transition duration-200 cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#2962FF]"
           title="Move tag status forward"
         >
@@ -114,13 +147,13 @@ const KanbanCard = React.memo(({ req, onMove, onDetails, onHistory }) => {
           <ArrowRight className="w-2.5 h-2.5" />
         </button>
         <button 
-          onClick={(e) => { e.stopPropagation(); onDetails(req); }} 
+          onClick={handleDetails} 
           className="border border-[#334155]/80 hover:bg-[#2962FF]/10 text-white rounded py-1 px-0.5 text-[9px] font-bold transition duration-200 cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#2962FF]"
         >
           Details
         </button>
         <button 
-          onClick={(e) => { e.stopPropagation(); onHistory(req); }} 
+          onClick={handleHistory} 
           className="border border-[#334155]/80 hover:bg-[#2962FF]/10 text-white rounded py-1 px-0.5 text-[9px] font-bold transition duration-200 cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#2962FF]"
         >
           History
@@ -130,7 +163,9 @@ const KanbanCard = React.memo(({ req, onMove, onDetails, onHistory }) => {
   );
 });
 
-// Skeletons columns loaders
+/**
+ * Top summary statistics loader
+ */
 const SummarySkeleton = () => (
   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 animate-pulse mb-2">
     {[...Array(4)].map((_, i) => (
@@ -139,6 +174,9 @@ const SummarySkeleton = () => (
   </div>
 );
 
+/**
+ * Columns container placeholders
+ */
 const ColumnsSkeleton = () => (
   <div className="grid grid-cols-3 gap-6 animate-pulse">
     {[...Array(3)].map((_, col) => (
@@ -153,16 +191,19 @@ const ColumnsSkeleton = () => (
   </div>
 );
 
+// ============================================================================
+// MAIN PAGE COMPONENT
+// ============================================================================
+
 export default function Maintenance() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  // Selected Card Popup Modal
+  // Modal selections
   const [activeModal, setActiveModal] = useState(null); // 'details', 'history'
   const [selectedRequest, setSelectedRequest] = useState(null);
 
-  // Fetch job records
   const fetchMaintenanceData = async () => {
     setLoading(true);
     setError(null);
@@ -186,7 +227,6 @@ export default function Maintenance() {
     fetchMaintenanceData();
   }, []);
 
-  // Compute stat totals memoized
   const stats = useMemo(() => {
     return {
       total: requests.length,
@@ -196,7 +236,6 @@ export default function Maintenance() {
     };
   }, [requests]);
 
-  // Adjust card forward workflow logic
   const handleMoveCard = useCallback(async (reqId) => {
     let updatedItem = null;
     setRequests(prev => {
@@ -235,7 +274,6 @@ export default function Maintenance() {
     });
   }, []);
 
-  // Modal actions
   const handleDetailsClick = useCallback((req) => {
     setSelectedRequest(req);
     setActiveModal('details');

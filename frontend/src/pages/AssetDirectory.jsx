@@ -13,7 +13,23 @@ import {
   Info
 } from 'lucide-react'
 
+// ============================================================================
+// CONSTANTS & CONFIGURATION
+// ============================================================================
+
 const API_BASE_URL = 'http://localhost:5000/api';
+
+const ROWS_PER_PAGE = 10;
+
+const STATIC_STATUSES = [
+  'Available', 
+  'Allocated', 
+  'Reserved', 
+  'Under Maintenance', 
+  'Lost', 
+  'Retired', 
+  'Disposed'
+];
 
 const FALLBACK_ASSETS = [
   { id: 'AST-8291', serial: 'SN-93021-X', name: 'MacBook Pro 16" (M3 Max, 64GB)', category: 'IT Equipment', department: 'Engineering', location: 'Mumbai HQ', condition: 'Excellent', status: 'Available', healthScore: 95 },
@@ -25,12 +41,48 @@ const FALLBACK_ASSETS = [
   { id: 'AST-7763', serial: 'SN-00273-P', name: 'Office Reception L-Sofa Set', category: 'Furniture', department: 'Human Resources', location: 'Mumbai HQ', condition: 'Excellent', status: 'Disposed', healthScore: 0 }
 ];
 
-// Row component memoized to save re-render cycles
-const AssetRow = React.memo(({ asset, onActionClick, getStatusBadgeStyle }) => {
+// ============================================================================
+// STYLING HELPERS
+// ============================================================================
+
+/**
+ * Returns matching Tailwind styles for status badges based on asset flags
+ */
+const getStatusBadgeStyle = (status) => {
+  switch (status) {
+    case 'Available':
+      return { backgroundColor: 'rgba(41,98,255,0.15)', color: '#2962FF' };
+    case 'Allocated':
+      return { backgroundColor: 'rgba(0,82,204,0.15)', color: '#0052CC' };
+    case 'Reserved':
+      return { backgroundColor: 'rgba(30,144,255,0.15)', color: '#1E90FF' };
+    case 'Under Maintenance':
+      return { backgroundColor: 'rgba(15,82,186,0.15)', color: '#0F52BA' };
+    case 'Lost':
+      return { backgroundColor: 'rgba(0,0,128,0.15)', color: '#000080' };
+    case 'Retired':
+      return { backgroundColor: 'rgba(65,105,225,0.15)', color: '#4169E1' };
+    case 'Disposed':
+      return { backgroundColor: 'rgba(0,71,171,0.15)', color: '#0047AB' };
+    default:
+      return { backgroundColor: 'rgba(255,255,255,0.1)', color: '#ffffff' };
+  }
+};
+
+// ============================================================================
+// SUB-COMPONENTS
+// ============================================================================
+
+/**
+ * Memoized single row entry component for rendering speed optimization
+ */
+const AssetRow = React.memo(({ asset, onActionClick }) => {
+  const handleView = useCallback(() => onActionClick(asset, 'view'), [asset, onActionClick]);
+  const handleEdit = useCallback(() => onActionClick(asset, 'edit'), [asset, onActionClick]);
+  const handleHistory = useCallback(() => onActionClick(asset, 'history'), [asset, onActionClick]);
+
   return (
-    <tr 
-      className="hover:bg-[#0F172A]/40 transition-all duration-150 group border-b border-[#334155]"
-    >
+    <tr className="hover:bg-[#0F172A]/40 transition-all duration-150 group border-b border-[#334155]">
       <td className="px-6 py-4 text-sm font-semibold tracking-wider font-mono text-[#CBD5E1] whitespace-nowrap">
         {asset.id}
       </td>
@@ -78,7 +130,7 @@ const AssetRow = React.memo(({ asset, onActionClick, getStatusBadgeStyle }) => {
       <td className="px-6 py-4 whitespace-nowrap">
         <div className="flex items-center justify-center gap-2">
           <button 
-            onClick={() => onActionClick(asset, 'view')} 
+            onClick={handleView} 
             className="flex items-center gap-1.5 px-3 py-1.5 border border-[#2962FF] hover:bg-[#0047AB] hover:border-[#0047AB] text-white text-xs font-semibold rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-[#2962FF] cursor-pointer"
             aria-label={`View details for ${asset.name}`}
           >
@@ -87,7 +139,7 @@ const AssetRow = React.memo(({ asset, onActionClick, getStatusBadgeStyle }) => {
           </button>
           
           <button 
-            onClick={() => onActionClick(asset, 'edit')} 
+            onClick={handleEdit} 
             className="flex items-center gap-1.5 px-3 py-1.5 border border-[#2962FF] hover:bg-[#0047AB] hover:border-[#0047AB] text-white text-xs font-semibold rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-[#2962FF] cursor-pointer"
             aria-label={`Edit ${asset.name}`}
           >
@@ -96,7 +148,7 @@ const AssetRow = React.memo(({ asset, onActionClick, getStatusBadgeStyle }) => {
           </button>
           
           <button 
-            onClick={() => onActionClick(asset, 'history')} 
+            onClick={handleHistory} 
             className="flex items-center gap-1.5 px-3 py-1.5 border border-[#2962FF] hover:bg-[#0047AB] hover:border-[#0047AB] text-white text-xs font-semibold rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-[#2962FF] cursor-pointer"
             aria-label={`View history for ${asset.name}`}
           >
@@ -109,8 +161,10 @@ const AssetRow = React.memo(({ asset, onActionClick, getStatusBadgeStyle }) => {
   );
 });
 
-// Tabular loading skeleton row loader
-const SkeletonsLoader = () => (
+/**
+ * Placeholder skeletons matching row structure
+ */
+const TableSkeletons = () => (
   <>
     {[...Array(6)].map((_, idx) => (
       <tr key={idx} className="animate-pulse border-b border-[#334155]/60">
@@ -128,6 +182,10 @@ const SkeletonsLoader = () => (
   </>
 );
 
+// ============================================================================
+// MAIN PAGE COMPONENT
+// ============================================================================
+
 export default function AssetDirectory() {
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -142,7 +200,7 @@ export default function AssetDirectory() {
   const [statusFilter, setStatusFilter] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
 
-  // Active query parameters (committed on Apply Filters click)
+  // Committed search/filter queries
   const [appliedQuery, setAppliedQuery] = useState({
     search: '',
     category: '',
@@ -151,14 +209,11 @@ export default function AssetDirectory() {
     location: ''
   });
 
-  // Table sorting configs
+  // Table states
   const [sortConfig, setSortConfig] = useState({ key: 'id', direction: 'asc' });
-
-  // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 10;
 
-  // Selection overlay modal controls
+  // Modal controls
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [activeModal, setActiveModal] = useState(null); // 'view', 'edit', 'history'
 
@@ -180,7 +235,7 @@ export default function AssetDirectory() {
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
-  // Fetch from Axio endpoints
+  // Dynamic asset retriever
   const fetchAssets = async () => {
     setLoading(true);
     setError(null);
@@ -204,10 +259,9 @@ export default function AssetDirectory() {
     fetchAssets();
   }, []);
 
-  // Set filter categories list memoized
+  // Filter option categories memoized from loaded assets list
   const categories = useMemo(() => [...new Set(assets.map(a => a.category))], [assets]);
   const departments = useMemo(() => [...new Set(assets.map(a => a.department))], [assets]);
-  const statuses = ['Available', 'Allocated', 'Reserved', 'Under Maintenance', 'Lost', 'Retired', 'Disposed'];
   const locations = useMemo(() => [...new Set(assets.map(a => a.location))], [assets]);
 
   const handleApplyFilters = useCallback(() => {
@@ -238,7 +292,6 @@ export default function AssetDirectory() {
     setCurrentPage(1);
   }, []);
 
-  // Header click handler sorting sequence
   const handleSort = useCallback((key) => {
     setSortConfig(prev => {
       if (prev.key === key) {
@@ -248,7 +301,7 @@ export default function AssetDirectory() {
     });
   }, []);
 
-  // Filtered & sorted array computation
+  // Sorted and filtered assets calculation
   const filteredAndSortedAssets = useMemo(() => {
     const filtered = assets.filter(item => {
       const matchText = appliedQuery.search.toLowerCase();
@@ -285,34 +338,15 @@ export default function AssetDirectory() {
     return filtered;
   }, [assets, appliedQuery, sortConfig]);
 
-  // Paginated layout
+  // Paginated partition view window
   const paginatedAssets = useMemo(() => {
-    const startIndex = (currentPage - 1) * rowsPerPage;
-    return filteredAndSortedAssets.slice(startIndex, startIndex + rowsPerPage);
+    const startIndex = (currentPage - 1) * ROWS_PER_PAGE;
+    return filteredAndSortedAssets.slice(startIndex, startIndex + ROWS_PER_PAGE);
   }, [filteredAndSortedAssets, currentPage]);
 
-  const totalPages = Math.ceil(filteredAndSortedAssets.length / rowsPerPage);
-
-  const getStatusBadgeStyle = useCallback((status) => {
-    switch (status) {
-      case 'Available':
-        return { backgroundColor: 'rgba(41,98,255,0.15)', color: '#2962FF' };
-      case 'Allocated':
-        return { backgroundColor: 'rgba(0,82,204,0.15)', color: '#0052CC' };
-      case 'Reserved':
-        return { backgroundColor: 'rgba(30,144,255,0.15)', color: '#1E90FF' };
-      case 'Under Maintenance':
-        return { backgroundColor: 'rgba(15,82,186,0.15)', color: '#0F52BA' };
-      case 'Lost':
-        return { backgroundColor: 'rgba(0,0,128,0.15)', color: '#000080' };
-      case 'Retired':
-        return { backgroundColor: 'rgba(65,105,225,0.15)', color: '#4169E1' };
-      case 'Disposed':
-        return { backgroundColor: 'rgba(0,71,171,0.15)', color: '#0047AB' };
-      default:
-        return { backgroundColor: 'rgba(255,255,255,0.1)', color: '#ffffff' };
-    }
-  }, []);
+  const totalPages = useMemo(() => {
+    return Math.ceil(filteredAndSortedAssets.length / ROWS_PER_PAGE);
+  }, [filteredAndSortedAssets]);
 
   const handleActionClick = useCallback((asset, type) => {
     setSelectedAsset(asset);
@@ -328,6 +362,11 @@ export default function AssetDirectory() {
         healthScore: asset.healthScore
       });
     }
+  }, []);
+
+  const closeModal = useCallback(() => {
+    setSelectedAsset(null);
+    setActiveModal(null);
   }, []);
 
   const handleSaveEdit = async (e) => {
@@ -358,11 +397,6 @@ export default function AssetDirectory() {
     closeModal();
   };
 
-  const closeModal = useCallback(() => {
-    setSelectedAsset(null);
-    setActiveModal(null);
-  }, []);
-
   return (
     <div className="min-h-screen bg-[#0F172A] text-white p-6 font-sans antialiased">
       {/* HEADER SECTION */}
@@ -373,7 +407,7 @@ export default function AssetDirectory() {
         </p>
       </header>
 
-      {/* ERROR DANGER ALERT */}
+      {/* ERROR MESSAGE DANGER STRIP */}
       {error && (
         <div 
           className="bg-amber-500/10 border border-amber-500/20 text-amber-400 p-4 rounded-xl text-xs flex items-center justify-between gap-3 mb-6 text-left origin-top animate-fadeIn"
@@ -394,7 +428,7 @@ export default function AssetDirectory() {
         </div>
       )}
 
-      {/* SEARCH / FILTERS */}
+      {/* SEARCH AND FILTERS */}
       <section className="bg-[#1E293B] border border-[#334155] rounded-xl p-5 shadow-xl mb-6 text-left" aria-label="Filters">
         <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
           <div className="xl:col-span-2 relative">
@@ -448,7 +482,7 @@ export default function AssetDirectory() {
                 aria-label="Filter by Status"
               >
                 <option value="">All Statuses</option>
-                {statuses.map(st => (
+                {STATIC_STATUSES.map(st => (
                   <option key={st} value={st}>{st}</option>
                 ))}
               </select>
@@ -486,7 +520,7 @@ export default function AssetDirectory() {
         </div>
       </section>
 
-      {/* TABLE GRID */}
+      {/* CORE TABLE */}
       <section className="bg-[#1E293B] border border-[#334155] rounded-xl shadow-2xl overflow-hidden flex flex-col" aria-label="Asset Directory Grid">
         <div className="overflow-x-auto border-b border-[#334155]">
           <table className="w-full text-left border-collapse">
@@ -533,18 +567,17 @@ export default function AssetDirectory() {
 
             <tbody className="divide-y divide-[#334155]">
               {loading ? (
-                <SkeletonsLoader />
+                <TableSkeletons />
               ) : paginatedAssets.length > 0 ? (
                 paginatedAssets.map((asset) => (
                   <AssetRow
                     key={asset.id}
                     asset={asset}
                     onActionClick={handleActionClick}
-                    getStatusBadgeStyle={getStatusBadgeStyle}
                   />
                 ))
               ) : (
-                /* EMPTY STATE VIEW */
+                /* EMPTY DATA PLACEHOLDER */
                 <tr>
                   <td colSpan="9" className="py-20 text-center text-[#94A3B8] font-medium bg-[#1e293b]/50 animate-fadeIn">
                     <div className="flex flex-col items-center justify-center gap-2">
@@ -558,11 +591,11 @@ export default function AssetDirectory() {
           </table>
         </div>
 
-        {/* PAGINATION FOOTER */}
+        {/* PAGINATION NAVIGATION */}
         {!loading && (
           <div className="bg-[#1E293B] px-6 py-4 flex items-center justify-between">
             <div className="text-xs text-[#94A3B8] font-medium">
-              Showing <span className="text-[#CBD5E1] font-semibold">{filteredAndSortedAssets.length ? (currentPage - 1) * rowsPerPage + 1 : 0}</span> to <span className="text-[#CBD5E1] font-semibold">{Math.min(currentPage * rowsPerPage, filteredAndSortedAssets.length)}</span> of <span className="text-[#CBD5E1] font-semibold">{filteredAndSortedAssets.length}</span> entries
+              Showing <span className="text-[#CBD5E1] font-semibold">{filteredAndSortedAssets.length ? (currentPage - 1) * ROWS_PER_PAGE + 1 : 0}</span> to <span className="text-[#CBD5E1] font-semibold">{Math.min(currentPage * ROWS_PER_PAGE, filteredAndSortedAssets.length)}</span> of <span className="text-[#CBD5E1] font-semibold">{filteredAndSortedAssets.length}</span> entries
             </div>
 
             <div className="flex items-center gap-2" role="navigation" aria-label="Pagination Navigation">
@@ -608,7 +641,7 @@ export default function AssetDirectory() {
         )}
       </section>
 
-      {/* POPUP MODALS OVERLAYS */}
+      {/* POPUP OVERLAYS */}
       {activeModal && selectedAsset && (
         <div 
           className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 z-50 text-left animate-fadeIn"
@@ -632,7 +665,7 @@ export default function AssetDirectory() {
               </button>
             </div>
 
-            {/* VIEW MODAL */}
+            {/* VIEW MODAL BODY */}
             {activeModal === 'view' && (
               <div className="p-6 space-y-4">
                 <div className="bg-[#0F172A] p-4 rounded-xl border border-[#334155] space-y-3">
@@ -686,7 +719,7 @@ export default function AssetDirectory() {
               </div>
             )}
 
-            {/* EDIT MODAL */}
+            {/* EDIT MODAL BODY */}
             {activeModal === 'edit' && (
               <form onSubmit={handleSaveEdit} className="p-6 space-y-4">
                 <div>
@@ -770,7 +803,7 @@ export default function AssetDirectory() {
                       onChange={(e) => setEditForm(prev => ({ ...prev, status: e.target.value }))}
                       className="w-full bg-[#0F172A] border border-[#334155] rounded-xl text-xs p-2.5 text-[#CBD5E1]"
                     >
-                      {statuses.map(st => (
+                      {STATIC_STATUSES.map(st => (
                         <option key={st} value={st}>{st}</option>
                       ))}
                     </select>
@@ -808,7 +841,7 @@ export default function AssetDirectory() {
               </form>
             )}
 
-            {/* HISTORY MODAL */}
+            {/* HISTORY MODAL BODY */}
             {activeModal === 'history' && (
               <div className="p-6 space-y-4">
                 <div className="text-[#CBD5E1] text-xs font-medium bg-[#0F172A] p-3 rounded-lg border border-[#334155]">

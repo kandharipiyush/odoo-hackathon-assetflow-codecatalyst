@@ -10,6 +10,10 @@ import {
   RotateCw
 } from 'lucide-react'
 
+// ============================================================================
+// CONSTANTS & CONFIGURATIONS
+// ============================================================================
+
 const API_BASE_URL = 'http://localhost:5000/api';
 
 const BOOKABLE_ASSETS = [
@@ -45,73 +49,73 @@ const TIMELINE_SLOTS = [
   { id: 'slot-17', label: '05:00 PM', status: 'Upcoming', description: 'Scheduled delivery run' }
 ];
 
-// Timeline card component memoized to reduce form-re-render overload
+// ============================================================================
+// SUB-COMPONENTS
+// ============================================================================
+
+/**
+ * Timeline hourly listing card, memoized for form interaction efficiency
+ */
 const TimelineSlotCard = React.memo(({ slot, isSelected, onClick }) => {
-  let bgStyle = '';
-  let textStyle = 'text-[#CBD5E1]';
-  let borderStyle = 'border border-[#334155]';
+  const handleClick = useCallback(() => onClick(slot.id), [slot.id, onClick]);
 
-  if (isSelected) {
-    bgStyle = 'bg-[#2962FF]';
-    textStyle = 'text-white';
-    borderStyle = 'border border-[#2962FF]';
-  } else {
-    switch (slot.status) {
-      case 'Available':
-        bgStyle = 'bg-white';
-        textStyle = 'text-slate-800';
-        borderStyle = 'border-2 border-[#2962FF]';
-        break;
-      case 'Booked':
-        bgStyle = 'bg-[#0052CC]';
-        textStyle = 'text-white';
-        break;
-      case 'Cancelled':
-        bgStyle = 'bg-[#000080]';
-        textStyle = 'text-white';
-        break;
-      case 'Upcoming':
-      default:
-        bgStyle = 'bg-[#2D68C4]';
-        textStyle = 'text-white';
-        break;
-    }
-  }
-
-  // Support Space or Enter activation keys
-  const handleKeyDown = (e) => {
+  const handleKeyDown = useCallback((e) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       onClick(slot.id);
     }
-  };
+  }, [slot.id, onClick]);
+
+  // Determine static style definitions based on reservation status
+  const cardStyle = useMemo(() => {
+    if (isSelected) {
+      return 'bg-[#2962FF] text-white border border-[#2962FF]';
+    }
+    switch (slot.status) {
+      case 'Available':
+        return 'bg-white text-slate-800 border-2 border-[#2962FF]';
+      case 'Booked':
+        return 'bg-[#0052CC] text-white border border-[#334155]';
+      case 'Cancelled':
+        return 'bg-[#000080] text-white border border-[#334155]';
+      case 'Upcoming':
+      default:
+        return 'bg-[#2D68C4] text-white border border-[#334155]';
+    }
+  }, [isSelected, slot.status]);
+
+  const badgeStyle = useMemo(() => {
+    return isSelected 
+      ? 'bg-white/20 text-white' 
+      : slot.status === 'Available'
+      ? 'bg-[#2962FF]/10 text-[#2962FF]'
+      : 'bg-black/15 text-white/90';
+  }, [isSelected, slot.status]);
+
+  const descriptionStyle = useMemo(() => {
+    return slot.status === 'Available' && !isSelected 
+      ? 'text-slate-600' 
+      : 'text-white/80';
+  }, [isSelected, slot.status]);
 
   return (
     <button
-      onClick={() => onClick(slot.id)}
+      onClick={handleClick}
       onKeyDown={handleKeyDown}
       tabIndex={0}
       aria-label={`Time slot: ${slot.label}. Status: ${slot.status}. ${slot.description}`}
       aria-pressed={isSelected}
-      className={`p-4 rounded-xl transition duration-200 hover:-translate-y-0.5 shadow-md flex flex-col justify-between h-24 ${bgStyle} ${textStyle} ${borderStyle} cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#2D68C4] outline-offset-2`}
+      className={`p-4 rounded-xl transition duration-200 hover:-translate-y-0.5 shadow-md flex flex-col justify-between h-24 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#2D68C4] outline-offset-2 ${cardStyle}`}
     >
       <div className="flex items-center justify-between w-full">
         <span className="text-[11px] font-bold tracking-wider font-mono">{slot.label}</span>
-        <span className={`text-[9px] uppercase font-extrabold px-1.5 py-0.5 rounded ${
-          isSelected 
-            ? 'bg-white/20 text-white' 
-            : slot.status === 'Available'
-            ? 'bg-[#2962FF]/10 text-[#2962FF]'
-            : 'bg-black/15 text-white/90'
-        }`}>
+        <span className={`text-[9px] uppercase font-extrabold px-1.5 py-0.5 rounded ${badgeStyle}`}>
           {slot.status}
         </span>
       </div>
 
       <div className="w-full text-left mt-2">
-        <p className={`text-[10px] font-bold line-clamp-1 truncate ${
-          slot.status === 'Available' && !isSelected ? 'text-slate-600' : 'text-white/80'
-        }`}>
+        <p className={`text-[10px] font-bold line-clamp-1 truncate ${descriptionStyle}`}>
           {slot.description}
         </p>
       </div>
@@ -119,7 +123,9 @@ const TimelineSlotCard = React.memo(({ slot, isSelected, onClick }) => {
   );
 });
 
-// Skeletons rendering blocks
+/**
+ * Suggester card placeholder block
+ */
 const AiSuggestedSkeleton = () => (
   <div className="bg-[#0F52BA]/60 border border-[#2962FF]/60 rounded-xl p-6 shadow-md animate-pulse mb-8 overflow-hidden">
     <div className="flex justify-between items-center">
@@ -136,13 +142,17 @@ const AiSuggestedSkeleton = () => (
   </div>
 );
 
+// ============================================================================
+// MAIN PAGE COMPONENT
+// ============================================================================
+
 export default function Bookings() {
   const [history, setHistory] = useState([]);
   const [aiChoice, setAiChoice] = useState(FALLBACK_AI_RECOMMENDATION);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Form Hooks
+  // Form Hooks Inputs
   const [employee, setEmployee] = useState('');
   const [department, setDepartment] = useState('Engineering');
   const [selectedAssetId, setSelectedAssetId] = useState('AST-101');
@@ -151,13 +161,10 @@ export default function Bookings() {
   const [endTime, setEndTime] = useState('11:00');
   const [purpose, setPurpose] = useState('');
 
-  // Selected slots navigation
+  // Selected schedule index
   const [selectedSlotId, setSelectedSlotId] = useState('slot-10');
-
-  // Availabilities checks validation message states
   const [availabilityMessage, setAvailabilityMessage] = useState(null);
 
-  // Fetch scheduler entries
   const fetchBookingsData = async () => {
     setLoading(true);
     setError(null);
@@ -285,10 +292,6 @@ export default function Bookings() {
     setAvailabilityMessage(null);
   }, []);
 
-  const handleSlotSelect = useCallback((id) => {
-    setSelectedSlotId(id);
-  }, []);
-
   const slotInfoDetails = useMemo(() => {
     return TIMELINE_SLOTS.find(s => s.id === selectedSlotId);
   }, [selectedSlotId]);
@@ -303,7 +306,7 @@ export default function Bookings() {
         </p>
       </header>
 
-      {/* ERROR STATUS ALERT */}
+      {/* ERROR STATUS STRIP */}
       {error && (
         <div 
           className="bg-amber-500/10 border border-amber-500/20 text-amber-400 p-4 rounded-xl text-xs flex items-center justify-between gap-3 mb-6 origin-top animate-fadeIn"
@@ -324,7 +327,7 @@ export default function Bookings() {
         </div>
       )}
 
-      {/* AI RECOMMENDATION BANNER */}
+      {/* AI SUGGESTION */}
       {loading ? (
         <AiSuggestedSkeleton />
       ) : (
@@ -364,10 +367,10 @@ export default function Bookings() {
         </aside>
       )}
 
-      {/* CORE WORKSPACE GRID CONTAINER */}
+      {/* CORE SCHEDULING CONTAINER */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8 items-start" aria-label="Bookings Workspace Grid">
         
-        {/* LEFT COLUMN: BOOKING FORM */}
+        {/* INPUT DEPARTMENTS SCHEDULER FORM */}
         <div className="lg:col-span-1 bg-[#1E293B] border border-[#334155] rounded-xl p-6 shadow-xl space-y-4">
           <h3 className="text-lg font-bold text-white border-b border-[#334155] pb-3 mb-2 flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-[#2962FF]"></span>
@@ -514,7 +517,7 @@ export default function Bookings() {
           </form>
         </div>
 
-        {/* RIGHT COLUMN: TIMELINE SLOT CARDS */}
+        {/* MID COLUMN TIMELINE DISPLAY */}
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-[#1E293B] border border-[#334155] rounded-xl p-6 shadow-xl">
             <div className="flex items-center justify-between border-b border-[#334155] pb-3 mb-4">
@@ -560,7 +563,7 @@ export default function Bookings() {
                   key={slot.id}
                   slot={slot}
                   isSelected={selectedSlotId === slot.id}
-                  onClick={handleSlotSelect}
+                  onClick={setSelectedSlotId}
                 />
               ))}
             </div>
@@ -580,7 +583,7 @@ export default function Bookings() {
         </div>
       </section>
 
-      {/* BOOKING HISTORY RECORDS TABLE */}
+      {/* PAST AUDITS SUMMARY LIST */}
       <section className="bg-[#1E293B] border border-[#334155] rounded-xl shadow-xl overflow-hidden" aria-label="Past Bookings Audit Table">
         <div className="px-6 py-4 border-b border-[#334155] flex items-center justify-between">
           <h3 className="text-lg font-bold text-white flex items-center gap-2">
