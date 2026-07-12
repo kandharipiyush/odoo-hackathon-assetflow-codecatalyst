@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback, useId } from 'react';
 import { X } from 'lucide-react';
 
 /**
@@ -15,6 +15,9 @@ export default function Modal({
 }) {
   const overlayRef = useRef(null);
   const contentRef = useRef(null);
+  // Stable IDs for aria-labelledby / aria-describedby linkage
+  const titleId = useId();
+  const bodyId = useId();
 
   const handleEscape = useCallback((e) => {
     if (e.key === 'Escape') onClose();
@@ -46,17 +49,20 @@ export default function Modal({
   if (!isOpen) return null;
 
   return (
+    // Overlay — not the dialog; no role or aria-label here
     <div
       ref={overlayRef}
       onClick={handleOverlayClick}
       className="fixed inset-0 z-50 bg-[#0F172A]/70 backdrop-blur-sm flex items-center justify-center p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-label={title}
     >
+      {/* Dialog — role, aria-labelledby, and aria-describedby live here */}
       <div
         ref={contentRef}
         tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={bodyId}
         className={`
           bg-[#1E293B] border border-[#334155] rounded-2xl w-full ${maxWidth}
           p-6 shadow-2xl animate-modal-in focus:outline-none
@@ -64,7 +70,7 @@ export default function Modal({
       >
         {/* Header */}
         <div className="flex justify-between items-center pb-4 border-b border-[#334155]">
-          <h4 className="text-sm font-bold text-white">{title}</h4>
+          <h4 id={titleId} className="text-sm font-bold text-white">{title}</h4>
           <button
             type="button"
             onClick={onClose}
@@ -76,7 +82,7 @@ export default function Modal({
         </div>
 
         {/* Body */}
-        <div className="mt-4">{children}</div>
+        <div id={bodyId} className="mt-4">{children}</div>
 
         {/* Footer */}
         {footer && (

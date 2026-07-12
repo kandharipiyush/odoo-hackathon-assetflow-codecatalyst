@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import ProtectedRoute from './ProtectedRoute';
@@ -14,7 +14,7 @@ import Login from '../pages/Login';
 import Signup from '../pages/Signup';
 
 // Import icons for fallbacks & mock screens
-import { ShieldAlert, LogIn, UserCheck, AlertTriangle } from 'lucide-react';
+import { ShieldAlert } from 'lucide-react';
 
 // ==========================================
 // 1. BEATIFULLY MOCKED PAGES (FALLBACKS)

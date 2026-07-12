@@ -69,8 +69,6 @@ export const AuthProvider = ({ children }) => {
     };
   }, [clearSession]);
 
-
-
   // DOM observer/synchronizer to dynamically push authenticated user details
   // into the hardcoded Sidebar and Header layouts without modifying their source code files
   useEffect(() => {
@@ -142,12 +140,21 @@ export const AuthProvider = ({ children }) => {
       }
     };
 
-    // Run immediately and setup a small mutation observer for reactive updates
+    // Run immediately, then observe with a debounced callback to prevent
+    // firing an expensive querySelectorAll scan on every React DOM mutation.
     syncDOM();
-    const observer = new MutationObserver(syncDOM);
+
+    let debounceTimer = null;
+    const debouncedSync = () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(syncDOM, 100);
+    };
+
+    const observer = new MutationObserver(debouncedSync);
     observer.observe(document.body, { childList: true, subtree: true });
 
     return () => {
+      clearTimeout(debounceTimer);
       observer.disconnect();
     };
   }, [user]);

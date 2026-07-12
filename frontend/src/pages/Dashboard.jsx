@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { 
   CheckCircle2, 
@@ -23,7 +23,7 @@ export default function Dashboard() {
   // Simulated loading state for skeleton experience
   const [isLoading, setIsLoading] = useState(true);
 
-  // Local state for dashboard interactivity
+  // Search query — stub for future asset/booking/maintenance filtering
   const [searchQuery, setSearchQuery] = useState('');
   
   // Dashboard mock metrics
@@ -85,6 +85,12 @@ export default function Dashboard() {
     },
   ]);
 
+  // Formatted date string — computed once on mount, never stale within a session
+  const currentDateString = useMemo(() => {
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    return new Date().toLocaleDateString('en-US', options);
+  }, []);
+
   // Simulate initial data loading
   useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 600);
@@ -112,12 +118,6 @@ export default function Dashboard() {
     if (detail) {
       setDialogState({ isOpen: true, title: detail.title, message: detail.message });
     }
-  };
-
-  // Get current date string formatted
-  const getCurrentDateString = () => {
-    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    return new Date().toLocaleDateString('en-US', options);
   };
 
   // Loading state
@@ -157,7 +157,7 @@ export default function Dashboard() {
           </h2>
           <p className="text-xs text-[#94A3B8] mt-1.5 font-medium flex items-center gap-1.5">
             <span className="inline-block w-2 h-2 rounded-full bg-[#22C55E]" aria-hidden="true" />
-            {getCurrentDateString()} • System Active
+            {currentDateString} • System Active
           </p>
         </div>
 

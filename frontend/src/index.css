@@ -5,6 +5,34 @@
    AssetFlow Enterprise Design System
    ============================================ */
 
+/* Design token custom properties — single source of truth for the color palette.
+   These mirror the hardcoded hex values used throughout the component tree so
+   future components can reference var(--color-*) instead of raw hex strings. */
+:root {
+  /* Surfaces */
+  --color-bg:          #0F172A;
+  --color-sidebar:     #111827;
+  --color-card:        #1E293B;
+
+  /* Brand */
+  --color-brand:       #0052CC;
+  --color-brand-hover: #2563EB;
+
+  /* Borders */
+  --color-border:      #334155;
+
+  /* Text */
+  --color-text:        #F8FAFC;
+  --color-text-muted:  #94A3B8;
+  --color-text-faint:  #64748B;
+
+  /* Semantic */
+  --color-success:     #22C55E;
+  --color-warning:     #F59E0B;
+  --color-danger:      #EF4444;
+  --color-info:        #3B82F6;
+}
+
 *,
 *::before,
 *::after {

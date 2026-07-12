@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Navigate, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { 
-  LogIn, Mail, Lock, Eye, EyeOff, ShieldAlert, 
+  LayoutGrid, Mail, Lock, Eye, EyeOff, ShieldAlert, 
   Monitor, Activity, Users, ArrowRight 
 } from 'lucide-react';
 
@@ -93,7 +93,7 @@ export default function Login() {
         {/* Header */}
         <div className="flex items-center gap-3 relative z-10">
           <div className="w-10 h-10 rounded-xl bg-[#0052CC] flex items-center justify-center shadow-lg shadow-[#0052CC]/25">
-            <LogIn className="w-5 h-5 text-white" aria-hidden="true" />
+            <LayoutGrid className="w-5 h-5 text-white" aria-hidden="true" />
           </div>
           <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-[#F8FAFC] to-[#94A3B8] bg-clip-text text-transparent">
             AssetFlow
@@ -145,7 +145,7 @@ export default function Login() {
         {/* Mobile logo */}
         <div className="absolute top-8 left-6 md:hidden flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-[#0052CC] flex items-center justify-center">
-            <LogIn className="w-3.5 h-3.5 text-white" aria-hidden="true" />
+            <LayoutGrid className="w-3.5 h-3.5 text-white" aria-hidden="true" />
           </div>
           <span className="text-sm font-bold text-[#F8FAFC]">AssetFlow</span>
         </div>
@@ -275,8 +275,8 @@ export default function Login() {
           </div>
 
           {/* Quick Sandbox Logins */}
-          <div className="mt-8 pt-6 border-t border-[#334155]/60">
-            <span className="block text-[11px] uppercase tracking-widest text-[#94A3B8] font-bold mb-3.5 text-center">
+          <div className="mt-8 pt-6 border-t border-[#334155]">
+            <span className="block text-[11px] uppercase tracking-widest text-[#64748B] font-bold mb-3.5 text-center">
               Developer Sandbox Access
             </span>
             <div className="grid grid-cols-2 gap-2.5">

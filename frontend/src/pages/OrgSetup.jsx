@@ -148,8 +148,7 @@ export default function OrgSetup() {
   // ==========================================
 
   // Departments CRUD
-  const handleSaveDept = (e) => {
-    e.preventDefault();
+  const handleSaveDept = () => {
     if (!deptForm.name.trim() || !deptForm.headName.trim()) {
       setFormError('Name and Department Head are required.');
       return;
@@ -174,8 +173,7 @@ export default function OrgSetup() {
   };
 
   // Asset Categories CRUD
-  const handleSaveCat = (e) => {
-    e.preventDefault();
+  const handleSaveCat = () => {
     if (!catForm.name.trim() || !catForm.warranty.trim()) {
       setFormError('Name and Warranty period are required.');
       return;
@@ -617,7 +615,7 @@ export default function OrgSetup() {
           </>
         }
       >
-        <form onSubmit={handleSaveDept} className="space-y-4">
+        <form className="space-y-4">
           {formError && (
             <div className="bg-[#EF4444]/10 border border-[#EF4444]/30 text-[#EF4444] p-3 rounded-lg text-xs font-medium animate-fade-in" role="alert">
               {formError}
@@ -691,7 +689,7 @@ export default function OrgSetup() {
           </>
         }
       >
-        <form onSubmit={handleSaveCat} className="space-y-4">
+        <form className="space-y-4">
           {formError && (
             <div className="bg-[#EF4444]/10 border border-[#EF4444]/30 text-[#EF4444] p-3 rounded-lg text-xs font-medium animate-fade-in" role="alert">
               {formError}
