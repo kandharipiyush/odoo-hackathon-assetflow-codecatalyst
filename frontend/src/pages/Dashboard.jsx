@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { 
   CheckCircle2, 
@@ -7,120 +7,168 @@ import {
   Calendar, 
   GitPullRequest, 
   CornerDownLeft, 
-  Search, 
-  TrendingUp, 
-  AlertTriangle 
+  TrendingUp,
 } from 'lucide-react';
 import StatCard from '../components/dashboard/StatCard';
 import AlertBanner from '../components/dashboard/AlertBanner';
 import QuickActionCard from '../components/dashboard/QuickActionCard';
 import RecentActivity from '../components/dashboard/RecentActivity';
+import LoadingSkeleton from '../components/common/LoadingSkeleton';
+import ConfirmDialog from '../components/common/ConfirmDialog';
+import SearchBar from '../components/common/SearchBar';
 
 export default function Dashboard() {
   const { user } = useAuth();
   
+  // Simulated loading state for skeleton experience
+  const [isLoading, setIsLoading] = useState(true);
+
   // Local state for dashboard interactivity
   const [searchQuery, setSearchQuery] = useState('');
   
   // Dashboard mock metrics
-  const [metrics, setMetrics] = useState({
+  const [metrics] = useState({
     assetsAvailable: 842,
     assetsAllocated: 384,
     maintenanceToday: 5,
     activeBookings: 18,
     pendingTransfers: 12,
-    upcomingReturns: 7
+    upcomingReturns: 7,
   });
 
   // Mock system alert values (dismissible / inspectable)
-  const [alerts, setAlerts] = useState({
+  const [alerts] = useState({
     overdueCount: 4,
     criticalMaintenanceCount: 2,
-    pendingApprovalsCount: 3
+    pendingApprovalsCount: 3,
   });
 
+  // Confirm dialog state (replaces native alert())
+  const [dialogState, setDialogState] = useState({ isOpen: false, title: '', message: '' });
+
   // Recent system log actions
-  const [activities, setActivities] = useState([
+  const [activities] = useState([
     {
       id: 'act-1',
       userName: 'Alex Carter',
       type: 'audit',
       message: 'Completed IT Equipment physical inventory audit (Marketing Dept).',
-      timestamp: '10m ago'
+      timestamp: '10m ago',
     },
     {
       id: 'act-2',
       userName: 'John Doe',
       type: 'create',
       message: 'Booked MacBook Pro 16" (Room B, Project Apollo).',
-      timestamp: '45m ago'
+      timestamp: '45m ago',
     },
     {
       id: 'act-3',
       userName: 'Sarah Jenkins',
       type: 'edit',
       message: 'Sent Dell UltraSharp Monitor #827 to Maintenance for backlight replacement.',
-      timestamp: '2h ago'
+      timestamp: '2h ago',
     },
     {
       id: 'act-4',
       userName: 'David Miller',
       type: 'transfer',
-      message: 'Approved Transfer Request #1084 (iPad Pro 12.9" -> Engineering).',
-      timestamp: 'Yesterday'
+      message: 'Approved Transfer Request #1084 (iPad Pro 12.9" → Engineering).',
+      timestamp: 'Yesterday',
     },
     {
       id: 'act-5',
       userName: 'Jane Watson',
       type: 'create',
       message: 'Registered new asset: Cisco Catalyst Switch (SN: 92849204).',
-      timestamp: '2 days ago'
-    }
+      timestamp: '2 days ago',
+    },
   ]);
 
-  // Handle resolving or inspecting system alerts
+  // Simulate initial data loading
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 600);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Handle resolving or inspecting system alerts — uses styled dialog instead of alert()
   const handleResolveAlert = (type) => {
-    if (type === 'overdue') {
-      alert(`AssetFlow Audit System:\n- Laptop-194 (John Doe) is overdue by 4 days\n- iPad-829 (Sarah Jenkins) is overdue by 2 days\n- Camera-012 (IT Dept) is overdue by 7 days\n- Phone-291 (Marketing Dept) is overdue by 3 days.`);
-    } else if (type === 'maintenance') {
-      alert(`Critical Maintenance Tickets:\n1. Server Room A Cooling Fan malfunction - CRITICAL\n2. Office Router backup power battery failure - HIGH`);
-    } else if (type === 'approvals') {
-      alert(`Pending Transfer Approvals:\n1. Macbook M2 Max - Engineering -> HR\n2. Test iPad Air - QA -> David Miller\n3. Wacom Tablet - Design -> John Doe`);
+    const alertDetails = {
+      overdue: {
+        title: 'Overdue Asset Returns',
+        message: '• Laptop-194 (John Doe) — overdue by 4 days\n• iPad-829 (Sarah Jenkins) — overdue by 2 days\n• Camera-012 (IT Dept) — overdue by 7 days\n• Phone-291 (Marketing Dept) — overdue by 3 days',
+      },
+      maintenance: {
+        title: 'Critical Maintenance Tickets',
+        message: '1. Server Room A Cooling Fan malfunction — CRITICAL\n2. Office Router backup power battery failure — HIGH',
+      },
+      approvals: {
+        title: 'Pending Transfer Approvals',
+        message: '1. Macbook M2 Max — Engineering → HR\n2. Test iPad Air — QA → David Miller\n3. Wacom Tablet — Design → John Doe',
+      },
+    };
+
+    const detail = alertDetails[type];
+    if (detail) {
+      setDialogState({ isOpen: true, title: detail.title, message: detail.message });
     }
   };
 
-  // Get current date string formatted beautifully
+  // Get current date string formatted
   const getCurrentDateString = () => {
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     return new Date().toLocaleDateString('en-US', options);
   };
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="space-y-8 text-[#F8FAFC] animate-fade-in">
+        <LoadingSkeleton type="card" rows={1} columns={1} />
+        <LoadingSkeleton type="stat" rows={6} />
+        <LoadingSkeleton type="card" rows={4} columns={4} />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <LoadingSkeleton type="card" rows={1} columns={1} />
+          <LoadingSkeleton type="card" rows={1} columns={1} />
+          <LoadingSkeleton type="activity" rows={4} />
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6 text-[#F8FAFC]">
+    <div className="space-y-8 text-[#F8FAFC] animate-fade-in">
       
+      {/* Confirm Dialog — replaces native alert() */}
+      <ConfirmDialog
+        isOpen={dialogState.isOpen}
+        onClose={() => setDialogState({ isOpen: false, title: '', message: '' })}
+        title={dialogState.title}
+        message={dialogState.message}
+        variant="info"
+        cancelText="Close"
+      />
+
       {/* 1. Page Header Section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#1E293B] border border-[#334155] rounded-[16px] p-6 shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#1E293B] border border-[#334155] rounded-2xl p-6 shadow-sm">
         <div>
-          <h2 className="text-xl font-bold text-white tracking-tight">
+          <h2 className="text-[30px] font-bold text-white tracking-tight leading-tight">
             Welcome back, {user?.name ? user.name.split(' ')[0] : 'Operator'}
           </h2>
-          <p className="text-xs text-[#94A3B8] mt-1 font-medium flex items-center gap-1.5">
-            <span className="inline-block w-2 h-2 rounded-full bg-[#22C55E]" />
+          <p className="text-xs text-[#94A3B8] mt-1.5 font-medium flex items-center gap-1.5">
+            <span className="inline-block w-2 h-2 rounded-full bg-[#22C55E]" aria-hidden="true" />
             {getCurrentDateString()} • System Active
           </p>
         </div>
 
         {/* Global Dashboard Search */}
-        <div className="relative max-w-xs w-full">
-          <Search className="w-4 h-4 text-[#94A3B8] absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search assets, maintenance, bookings..."
-            className="w-full bg-[#0F172A] border border-[#334155] rounded-[10px] pl-9 pr-4 py-2.5 text-xs text-[#F8FAFC] placeholder-[#64748B] focus:outline-none focus:border-[#0052CC] focus:ring-1 focus:ring-[#0052CC]/30 transition-all duration-200"
-          />
-        </div>
+        <SearchBar
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Search assets, maintenance, bookings..."
+          size="sm"
+          className="max-w-xs w-full"
+        />
       </div>
 
       {/* 2. Alert Banner Panel */}
@@ -190,7 +238,7 @@ export default function Dashboard() {
       </div>
 
       {/* 4. Quick Actions Panel */}
-      <div className="space-y-3">
+      <div className="space-y-4">
         <h4 className="text-xs uppercase tracking-widest text-[#94A3B8] font-bold">
           Workspace Quick Operations
         </h4>
@@ -230,33 +278,32 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* 5. Custom Chart Dashboards & Recent Activity Feed */}
+      {/* 5. Chart Dashboards & Recent Activity Feed */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Chart Card 1: Asset Utilization (SVG-based) */}
-        <div className="bg-[#1E293B] border border-[#334155] rounded-[16px] p-6 shadow-md flex flex-col justify-between">
+        {/* Chart Card 1: Asset Utilization */}
+        <div className="bg-[#1E293B] border border-[#334155] rounded-2xl p-6 shadow-md flex flex-col justify-between hover:shadow-lg transition-shadow duration-200">
           <div>
             <h4 className="text-sm font-bold text-[#F8FAFC]">Asset Utilization</h4>
             <p className="text-xs text-[#94A3B8] mt-0.5">Allocation density by hardware category</p>
             
-            {/* SVG Interactive Bars */}
+            {/* Utilization Bars */}
             <div className="space-y-4 mt-6">
               {[
                 { category: 'Laptops & Workstations', percentage: 92, count: '312/340', color: '#0052CC' },
-                { category: 'Monitors & Displays', percentage: 84, count: '420/500', color: '#3b82f6' },
+                { category: 'Monitors & Displays', percentage: 84, count: '420/500', color: '#3B82F6' },
                 { category: 'Network Switches', percentage: 70, count: '35/50', color: '#22C55E' },
-                { category: 'Conference Equipment', percentage: 55, count: '44/80', color: '#a855f7' },
-                { category: 'Test Mobile Devices', percentage: 40, count: '60/150', color: '#F59E0B' }
-              ].map((item, idx) => (
-                <div key={idx} className="space-y-1.5">
+                { category: 'Conference Equipment', percentage: 55, count: '44/80', color: '#A855F7' },
+                { category: 'Test Mobile Devices', percentage: 40, count: '60/150', color: '#F59E0B' },
+              ].map((item) => (
+                <div key={item.category} className="space-y-1.5">
                   <div className="flex justify-between text-[11px] font-semibold">
                     <span className="text-[#F8FAFC]">{item.category}</span>
                     <span className="text-[#94A3B8]">{item.count} ({item.percentage}%)</span>
                   </div>
-                  {/* Outer bar */}
-                  <div className="w-full bg-[#0F172A] rounded-full h-2.5 overflow-hidden border border-[#334155]">
+                  <div className="w-full bg-[#0F172A] rounded-full h-2 overflow-hidden border border-[#334155]">
                     <div 
-                      className="h-full rounded-full transition-all duration-500 ease-out" 
+                      className="h-full rounded-full transition-all duration-700 ease-out" 
                       style={{ width: `${item.percentage}%`, backgroundColor: item.color }}
                     />
                   </div>
@@ -271,15 +318,15 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Chart Card 2: Maintenance Trends (SVG Path chart) */}
-        <div className="bg-[#1E293B] border border-[#334155] rounded-[16px] p-6 shadow-md flex flex-col justify-between">
+        {/* Chart Card 2: Maintenance Trends */}
+        <div className="bg-[#1E293B] border border-[#334155] rounded-2xl p-6 shadow-md flex flex-col justify-between hover:shadow-lg transition-shadow duration-200">
           <div>
             <h4 className="text-sm font-bold text-[#F8FAFC]">Maintenance Trend</h4>
             <p className="text-xs text-[#94A3B8] mt-0.5">Resolved repair tickets (last 6 months)</p>
             
             {/* SVG Line Graph */}
             <div className="mt-8 flex justify-center items-center relative">
-              <svg className="w-full h-32" viewBox="0 0 300 120">
+              <svg className="w-full h-32" viewBox="0 0 300 120" aria-label="Maintenance trend chart showing resolved tickets over 6 months">
                 {/* Background Grid Lines */}
                 <line x1="0" y1="20" x2="300" y2="20" stroke="#334155" strokeWidth="0.5" strokeDasharray="3,3" />
                 <line x1="0" y1="60" x2="300" y2="60" stroke="#334155" strokeWidth="0.5" strokeDasharray="3,3" />
@@ -345,9 +392,7 @@ export default function Dashboard() {
         <div className="lg:col-span-1">
           <RecentActivity activities={activities} />
         </div>
-
       </div>
-
     </div>
   );
 }

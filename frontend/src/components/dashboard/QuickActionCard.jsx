@@ -1,6 +1,33 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
+
+/**
+ * QuickActionCard — navigational action card for Dashboard quick operations.
+ * Supports color schemes: blue, green, amber, purple.
+ */
+const COLOR_CONFIG = {
+  green: {
+    iconBg: 'bg-[#22C55E]/10 border-[#22C55E]/20 text-[#22C55E]',
+    hoverBg: 'hover:border-[#22C55E]/30',
+    arrowBg: 'bg-[#22C55E]/10 text-[#22C55E] group-hover:bg-[#22C55E]/20',
+  },
+  amber: {
+    iconBg: 'bg-[#F59E0B]/10 border-[#F59E0B]/20 text-[#F59E0B]',
+    hoverBg: 'hover:border-[#F59E0B]/30',
+    arrowBg: 'bg-[#F59E0B]/10 text-[#F59E0B] group-hover:bg-[#F59E0B]/20',
+  },
+  purple: {
+    iconBg: 'bg-purple-500/10 border-purple-500/20 text-purple-400',
+    hoverBg: 'hover:border-purple-500/30',
+    arrowBg: 'bg-purple-500/10 text-purple-400 group-hover:bg-purple-500/20',
+  },
+  blue: {
+    iconBg: 'bg-[#0052CC]/10 border-[#0052CC]/20 text-[#0052CC]',
+    hoverBg: 'hover:border-[#0052CC]/30',
+    arrowBg: 'bg-[#0052CC]/10 text-[#0052CC] group-hover:bg-[#0052CC]/20',
+  },
+};
 
 export default function QuickActionCard({ 
   title, 
@@ -8,55 +35,30 @@ export default function QuickActionCard({
   icon: Icon, 
   to,
   badgeText,
-  colorScheme = 'blue' // 'blue' | 'green' | 'amber' | 'purple'
+  colorScheme = 'blue',
 }) {
-  const getColorStyles = () => {
-    switch (colorScheme) {
-      case 'green':
-        return {
-          iconBg: 'bg-[#22C55E]/10 border-[#22C55E]/20 text-[#22C55E]',
-          hoverBg: 'hover:border-[#22C55E]/30 hover:bg-[#22C55E]/5',
-          plusBg: 'bg-[#22C55E] group-hover:bg-[#22C55E]/90'
-        };
-      case 'amber':
-        return {
-          iconBg: 'bg-[#F59E0B]/10 border-[#F59E0B]/20 text-[#F59E0B]',
-          hoverBg: 'hover:border-[#F59E0B]/30 hover:bg-[#F59E0B]/5',
-          plusBg: 'bg-[#F59E0B] group-hover:bg-[#F59E0B]/90'
-        };
-      case 'purple':
-        return {
-          iconBg: 'bg-[#a3e635]/10 border-[#a3e635]/20 text-[#a3e635]', // actually yellow-green in original, let's keep purple styling
-          hoverBg: 'hover:border-purple-500/30 hover:bg-purple-500/5',
-          plusBg: 'bg-purple-600 group-hover:bg-purple-500'
-        };
-      case 'blue':
-      default:
-        return {
-          iconBg: 'bg-[#0052CC]/10 border-[#0052CC]/20 text-[#0052CC]',
-          hoverBg: 'hover:border-[#0052CC]/30 hover:bg-[#0052CC]/5',
-          plusBg: 'bg-[#0052CC] group-hover:bg-[#2563EB]'
-        };
-    }
-  };
-
-  const colors = getColorStyles();
+  const colors = COLOR_CONFIG[colorScheme] || COLOR_CONFIG.blue;
 
   return (
     <Link 
       to={to} 
-      className={`bg-[#1E293B] border border-[#334155] rounded-[16px] p-5 shadow-sm transition-all duration-200 group flex flex-col justify-between h-full ${colors.hoverBg}`}
+      className={`
+        bg-[#1E293B] border border-[#334155] rounded-2xl p-5 shadow-sm
+        transition-all duration-200 group flex flex-col justify-between h-full
+        hover:-translate-y-0.5 hover:shadow-lg ${colors.hoverBg}
+      `.trim()}
+      aria-label={`${title} — ${description}`}
     >
       <div>
         <div className="flex justify-between items-start">
           {/* Action Icon */}
-          <div className={`w-11 h-11 rounded-[12px] border flex items-center justify-center ${colors.iconBg}`}>
-            {Icon && <Icon className="w-5.5 h-5.5" />}
+          <div className={`w-11 h-11 rounded-xl border flex items-center justify-center ${colors.iconBg}`}>
+            {Icon && <Icon className="w-5 h-5" aria-hidden="true" />}
           </div>
 
-          {/* Plus action trigger pill */}
-          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-white transition-all duration-200 shadow-sm ${colors.plusBg}`}>
-            <Plus className="w-4 h-4" />
+          {/* Arrow indicator */}
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${colors.arrowBg}`}>
+            <ArrowRight className="w-4 h-4" aria-hidden="true" />
           </div>
         </div>
 
