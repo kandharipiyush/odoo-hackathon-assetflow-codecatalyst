@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
-import axios from 'axios'
+import { api as axios } from '../services/authService'
 import {
   Wrench,
   AlertTriangle,
@@ -12,7 +12,9 @@ import {
   Activity,
   Award,
   RotateCw,
-  Info
+  Info,
+  Plus,
+  Send
 } from 'lucide-react'
 
 // ============================================================================
@@ -201,25 +203,67 @@ export default function Maintenance() {
   const [error, setError] = useState(null);
   
   // Modal selections
-  const [activeModal, setActiveModal] = useState(null); // 'details', 'history'
+  const [activeModal, setActiveModal] = useState(null); // 'details', 'history', 'raise'
   const [selectedRequest, setSelectedRequest] = useState(null);
+
+  // Raise Issue form state
+  const [raiseAssetId, setRaiseAssetId] = useState('');
+  const [raiseDescription, setRaiseDescription] = useState('');
+  const [raisePriority, setRaisePriority] = useState('MEDIUM');
+  const [raiseMessage, setRaiseMessage] = useState(null);
+  const [raiseSubmitting, setRaiseSubmitting] = useState(false);
+  const [assetsList, setAssetsList] = useState([]);
 
   const fetchMaintenanceData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(`${API_BASE_URL}/maintenance`);
-      if (Array.isArray(response.data)) {
-        setRequests(response.data);
+      const [maintRes, assetsRes] = await Promise.allSettled([
+        axios.get(`${API_BASE_URL}/maintenance`),
+        axios.get(`${API_BASE_URL}/assets`)
+      ]);
+      if (maintRes.status === 'fulfilled' && Array.isArray(maintRes.value.data?.data)) {
+        setRequests(maintRes.value.data.data);
       } else {
-        setRequests(FALLBACK_REQUESTS);
+        setRequests([]);
+      }
+      if (assetsRes.status === 'fulfilled' && Array.isArray(assetsRes.value.data?.data)) {
+        setAssetsList(assetsRes.value.data.data);
       }
     } catch (err) {
-      console.warn("REST endpoint unavailable. Restoring static reserve records database.", err);
+      console.warn("REST endpoint unavailable.", err);
       setError("Connect request failed. Presenting localized maintenance tickets snapshot.");
-      setRequests(FALLBACK_REQUESTS);
+      setRequests([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRaiseIssue = async (e) => {
+    e.preventDefault();
+    if (!raiseAssetId || !raiseDescription) {
+      setRaiseMessage({ type: 'error', text: 'Asset and description are required.' });
+      return;
+    }
+    setRaiseSubmitting(true);
+    try {
+      const res = await axios.post(`${API_BASE_URL}/maintenance`, {
+        asset_id: raiseAssetId,
+        issue_description: raiseDescription,
+        priority: raisePriority
+      });
+      setRaiseMessage({ type: 'success', text: 'Issue reported successfully!' });
+      setRaiseAssetId(''); setRaiseDescription(''); setRaisePriority('MEDIUM');
+      // Refresh the board after 1s
+      setTimeout(() => {
+        setActiveModal(null);
+        setRaiseMessage(null);
+        fetchMaintenanceData();
+      }, 1200);
+    } catch (err) {
+      setRaiseMessage({ type: 'error', text: err.response?.data?.message || 'Failed to report issue.' });
+    } finally {
+      setRaiseSubmitting(false);
     }
   };
 
@@ -306,11 +350,20 @@ export default function Maintenance() {
     <div className="min-h-screen bg-[#0F172A] text-white p-6 font-sans antialiased text-left flex flex-col gap-6">
       
       {/* HEADER SECTION */}
-      <header className="border-b border-[#334155] pb-6">
-        <h1 className="text-3xl font-extrabold tracking-tight text-white mb-2">Maintenance Management</h1>
-        <p className="text-[#CBD5E1] text-sm font-medium">
-          Track repair requests and maintenance workflow.
-        </p>
+      <header className="border-b border-[#334155] pb-6 flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-extrabold tracking-tight text-white mb-2">Maintenance Management</h1>
+          <p className="text-[#CBD5E1] text-sm font-medium">
+            Track repair requests and maintenance workflow.
+          </p>
+        </div>
+        <button
+          onClick={() => { setRaiseMessage(null); setActiveModal('raise'); }}
+          className="flex items-center gap-2 px-5 py-2.5 bg-[#2962FF] hover:bg-[#0047AB] text-white text-xs font-bold rounded-lg shadow-lg transition duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#2962FF] focus:ring-offset-2 focus:ring-offset-[#0F172A]"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Raise Issue</span>
+        </button>
       </header>
 
       {/* ERROR STATUS ALERT */}
@@ -555,6 +608,106 @@ export default function Maintenance() {
                 </div>
               </div>
             )}
+
+          </div>
+        </div>
+      )}
+
+      {/* RAISE ISSUE MODAL */}
+      {activeModal === 'raise' && (
+        <div
+          className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 z-50 text-left text-xs animate-fadeIn"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="bg-[#1E293B] border border-[#334155] rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-scaleUp">
+
+            {/* Modal Header */}
+            <div className="bg-[#0F172A] p-4 border-b border-[#334155] flex items-center justify-between">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-[#2962FF]" />
+                <span>Raise Maintenance Issue</span>
+              </h3>
+              <button
+                onClick={() => { setActiveModal(null); setRaiseMessage(null); }}
+                className="text-[#94A3B8] hover:text-white p-1 rounded-lg hover:bg-[#334155] transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#2962FF]"
+                aria-label="Close raise issue modal"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleRaiseIssue} className="p-5 space-y-4">
+              {raiseMessage && (
+                <div className={`p-3 rounded-lg border text-xs flex items-start gap-2 ${raiseMessage.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-green-500/10 border-green-500/20 text-green-400'}`}>
+                  {raiseMessage.type === 'error' ? <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> : <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />}
+                  <span>{raiseMessage.text}</span>
+                </div>
+              )}
+
+              <div>
+                <label htmlFor="raise_asset" className="block text-[10px] text-[#94A3B8] uppercase tracking-wider font-bold mb-1.5">Asset *</label>
+                <select
+                  id="raise_asset"
+                  required
+                  value={raiseAssetId}
+                  onChange={e => setRaiseAssetId(e.target.value)}
+                  className="w-full bg-[#0F172A] border border-[#334155] rounded-lg p-2.5 text-white text-xs focus:outline-none focus:border-[#2962FF] focus:ring-1 focus:ring-[#2962FF]"
+                >
+                  <option value="">Select the asset with the issue...</option>
+                  {assetsList.map(asset => (
+                    <option key={asset.id} value={asset.id}>{asset.name} ({asset.asset_tag})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="raise_priority" className="block text-[10px] text-[#94A3B8] uppercase tracking-wider font-bold mb-1.5">Priority</label>
+                <select
+                  id="raise_priority"
+                  value={raisePriority}
+                  onChange={e => setRaisePriority(e.target.value)}
+                  className="w-full bg-[#0F172A] border border-[#334155] rounded-lg p-2.5 text-white text-xs focus:outline-none focus:border-[#2962FF] focus:ring-1 focus:ring-[#2962FF]"
+                >
+                  <option value="LOW">Low</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="HIGH">High</option>
+                  <option value="EMERGENCY">Emergency</option>
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="raise_desc" className="block text-[10px] text-[#94A3B8] uppercase tracking-wider font-bold mb-1.5">Issue Description *</label>
+                <textarea
+                  id="raise_desc"
+                  required
+                  rows={4}
+                  placeholder="Describe the defect, damage, or malfunction in detail..."
+                  value={raiseDescription}
+                  onChange={e => setRaiseDescription(e.target.value)}
+                  className="w-full bg-[#0F172A] border border-[#334155] rounded-lg p-2.5 text-white text-xs placeholder-slate-500 focus:outline-none focus:border-[#2962FF] focus:ring-1 focus:ring-[#2962FF] resize-none"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2 border-t border-[#334155]/60">
+                <button
+                  type="button"
+                  onClick={() => { setActiveModal(null); setRaiseMessage(null); }}
+                  className="flex-1 px-4 py-2.5 bg-[#334155] hover:bg-[#475569] text-white text-[11px] font-bold rounded-lg transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={raiseSubmitting}
+                  className="flex-1 px-4 py-2.5 bg-[#2962FF] hover:bg-[#0047AB] disabled:opacity-50 text-white text-[11px] font-bold rounded-lg transition cursor-pointer flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#2962FF]"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>{raiseSubmitting ? 'Submitting...' : 'Submit Issue'}</span>
+                </button>
+              </div>
+            </form>
 
           </div>
         </div>

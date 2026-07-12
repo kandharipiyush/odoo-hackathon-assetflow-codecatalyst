@@ -224,17 +224,19 @@ export const Router = () => {
                 <Allocations />
               </DashboardLayout>
             } />
-            <Route path="/maintenance" element={
-              <DashboardLayout title="Maintenance Management">
-                <Maintenance />
-              </DashboardLayout>
-            } />
             <Route path="/reports" element={
               <DashboardLayout title="Reports & Analytics">
                 <MockReports />
               </DashboardLayout>
             } />
           </Route>
+
+          {/* Maintenance - Accessible to ALL authenticated users (employees can raise issues) */}
+          <Route path="/maintenance" element={
+            <DashboardLayout title="Maintenance Management">
+              <Maintenance />
+            </DashboardLayout>
+          } />
 
           {/* Auditing - Restricted to Admin and Asset Manager */}
           <Route element={<ProtectedRoute allowedRoles={['Admin', 'Asset Manager']} />}>
