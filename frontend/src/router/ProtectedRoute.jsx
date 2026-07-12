@@ -32,9 +32,12 @@ export const ProtectedRoute = ({ allowedRoles }) => {
 
   // Handle role validation if restricted roles are specified
   if (allowedRoles && allowedRoles.length > 0) {
+    const normalizeRole = (r) => typeof r === 'string' ? r.toUpperCase().replace(/\s+/g, '_') : '';
+    const userRoleNormalized = normalizeRole(role);
+
     const isAuthorized = Array.isArray(allowedRoles)
-      ? allowedRoles.includes(role)
-      : role === allowedRoles;
+      ? allowedRoles.map(normalizeRole).includes(userRoleNormalized)
+      : userRoleNormalized === normalizeRole(allowedRoles);
 
     if (!isAuthorized) {
       // Redirect to unauthorized route if they don't have access

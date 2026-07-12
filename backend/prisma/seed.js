@@ -69,6 +69,65 @@ async function main() {
   });
 
   console.log(`Seeded admin user: ${adminUser.name} (${adminUser.id})`);
+
+  // 4. Seed Assets (Bookable & General)
+  const electronicsCat = await prisma.assetCategory.findFirst({ where: { name: 'Electronics' } });
+  const furnitureCat = await prisma.assetCategory.findFirst({ where: { name: 'Furniture' } });
+
+  if (electronicsCat && furnitureCat) {
+    const seededAssets = [
+      {
+        name: 'MacBook Pro 16"',
+        asset_tag: 'AST-MBP-001',
+        description: 'M2 Max, 32GB RAM, 1TB SSD',
+        category_id: electronicsCat.id,
+        created_by: adminUser.id,
+        is_bookable: true,
+        location: 'HQ Room 101',
+        purchase_date: new Date()
+      },
+      {
+        name: 'Conference Room A',
+        asset_tag: 'AST-CR-00A',
+        description: 'Main conference space with AV setup',
+        category_id: furnitureCat.id,
+        created_by: adminUser.id,
+        is_bookable: true,
+        location: 'HQ Floor 2',
+        purchase_date: new Date()
+      },
+      {
+        name: 'Conference Room B',
+        asset_tag: 'AST-CR-00B',
+        description: 'Smaller huddle room',
+        category_id: furnitureCat.id,
+        created_by: adminUser.id,
+        is_bookable: true,
+        location: 'HQ Floor 2',
+        purchase_date: new Date()
+      },
+      {
+        name: 'Projector Pro #3',
+        asset_tag: 'AST-PROJ-003',
+        description: '4K Wireless Projector',
+        category_id: electronicsCat.id,
+        created_by: adminUser.id,
+        is_bookable: true,
+        location: 'IT Storage',
+        purchase_date: new Date()
+      }
+    ];
+
+    for (const asset of seededAssets) {
+      await prisma.asset.upsert({
+        where: { asset_tag: asset.asset_tag },
+        update: {},
+        create: asset
+      });
+      console.log(`Seeded asset: ${asset.name} (${asset.asset_tag})`);
+    }
+  }
+
   console.log('Seeding successfully completed!');
 }
 

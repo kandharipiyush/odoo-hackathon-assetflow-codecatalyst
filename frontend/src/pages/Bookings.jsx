@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
-import axios from 'axios'
+import { api as axios } from '../services/authService'
 import {
   Calendar as CalendarIcon,
   Clock,
@@ -152,10 +152,11 @@ export default function Bookings() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Form Hooks Inputs
+  // Form inputs
+  const [bookableAssets, setBookableAssets] = useState([]);
   const [employee, setEmployee] = useState('');
   const [department, setDepartment] = useState('Engineering');
-  const [selectedAssetId, setSelectedAssetId] = useState('AST-101');
+  const [selectedAssetId, setSelectedAssetId] = useState('');
   const [bookingDate, setBookingDate] = useState(new Date().toISOString().split('T')[0]);
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('11:00');
@@ -169,16 +170,31 @@ export default function Bookings() {
     setLoading(true);
     setError(null);
     try {
-      const bookingsRes = await axios.get(`${API_BASE_URL}/bookings`);
-      if (Array.isArray(bookingsRes.data)) {
-        setHistory(bookingsRes.data);
+      const [bookingsRes, assetsRes] = await Promise.all([
+        axios.get(`${API_BASE_URL}/bookings`),
+        axios.get(`${API_BASE_URL}/assets`)
+      ]);
+
+      if (bookingsRes.data && Array.isArray(bookingsRes.data.data)) {
+        setHistory(bookingsRes.data.data);
       } else {
-        setHistory(FALLBACK_BOOKINGS);
+        setHistory([]);
+      }
+
+      if (assetsRes.data && Array.isArray(assetsRes.data.data)) {
+        const bookables = assetsRes.data.data.filter(a => a.is_bookable);
+        setBookableAssets(bookables);
+        if (bookables.length > 0 && !selectedAssetId) {
+          setSelectedAssetId(bookables[0].id);
+        }
+      } else {
+        setBookableAssets([]);
       }
     } catch (err) {
       console.warn("REST endpoint unavailable. Restoring static reserve database logs.", err);
-      setError("Connect request failed. Presenting localized scheduler records snapshot.");
-      setHistory(FALLBACK_BOOKINGS);
+      setError("Connect request failed. Presenting database snapshot.");
+      setHistory([]);
+      setBookableAssets([]);
     }
 
     try {
@@ -220,7 +236,8 @@ export default function Bookings() {
       return;
     }
 
-    const assetObj = BOOKABLE_ASSETS.find(a => a.id === selectedAssetId);
+    const assetObj = bookableAssets.find(a => a.id === selectedAssetId);
+    if (!assetObj) return;
     
     // Check conflicts online and local fallbacks
     if (selectedAssetId === 'AST-101' && bookingDate === '2026-07-14' && (
@@ -252,7 +269,11 @@ export default function Bookings() {
       return;
     }
 
-    const assetObj = BOOKABLE_ASSETS.find(a => a.id === selectedAssetId);
+    const assetObj = bookableAssets.find(a => a.id === selectedAssetId);
+    if (!assetObj) {
+      alert('Please select an asset to book.');
+      return;
+    }
 
     // Build ISO date strings for the backend payload contract
     const startISO = new Date(`${bookingDate}T${startTime}:00`).toISOString();
@@ -277,10 +298,14 @@ export default function Bookings() {
     };
 
     try {
-      await axios.post(`${API_BASE_URL}/bookings`, backendPayload);
-      setHistory(prev => [localBooking, ...prev]);
+      const response = await axios.post(`${API_BASE_URL}/bookings`, backendPayload);
+      if (response.data && response.data.success) {
+        fetchBookingsData();
+      } else {
+        setHistory(prev => [localBooking, ...prev]);
+      }
     } catch (err) {
-      console.warn("Backend saving request skipped. Recording reservation changes locally.", err);
+      console.warn("Backend saving request failed.", err);
       setHistory(prev => [localBooking, ...prev]);
     }
 
@@ -441,9 +466,9 @@ export default function Bookings() {
                 onChange={(e) => setSelectedAssetId(e.target.value)}
                 className="w-full bg-[#0F172A] border border-[#334155] rounded-lg p-2.5 text-white cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#2962FF]"
               >
-                {BOOKABLE_ASSETS.map(asset => (
+                {bookableAssets.map(asset => (
                   <option key={asset.id} value={asset.id}>
-                    {asset.name} ({asset.id})
+                    {asset.name} ({asset.asset_tag || asset.id})
                   </option>
                 ))}
               </select>

@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const maintenanceController = require('../controllers/maintenanceController');
+const authenticate = require('../middleware/authenticate');
 
-router.get('/', maintenanceController.getAllRequests);
-router.post('/', maintenanceController.reportMaintenance);
-router.patch('/:id/resolve', maintenanceController.resolveMaintenance);
+router.get('/', authenticate, maintenanceController.getAllRequests);
+router.post('/', authenticate, maintenanceController.reportMaintenance);
+router.patch('/:id/resolve', authenticate, maintenanceController.resolveMaintenance);
 
 module.exports = router;
