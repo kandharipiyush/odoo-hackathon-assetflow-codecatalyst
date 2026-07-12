@@ -8,4 +8,7 @@ router.post('/signup', authController.signup);
 // POST /api/auth/login
 router.post('/login', authController.login);
 
+// GET /api/auth/departments (Public route for signup)
+router.get('/departments', authController.getDepartments);
+
 module.exports = router;

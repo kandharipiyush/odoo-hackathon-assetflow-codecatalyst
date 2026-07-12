@@ -56,9 +56,34 @@ exports.createBooking = async (req, res) => {
 exports.getAllBookings = async (req, res) => {
     try {
         const bookings = await prisma.booking.findMany({
-            orderBy: { start_date: 'asc' }
+            include: {
+                asset: true,
+                user: true
+            },
+            orderBy: { start_date: 'desc' }
         });
-        res.status(200).json({ success: true, data: bookings });
+
+        const formatted = bookings.map(b => {
+            const startDate = new Date(b.start_date);
+            const endDate = new Date(b.end_date);
+            const startHour = startDate.getHours().toString().padStart(2, '0');
+            const startMin = startDate.getMinutes().toString().padStart(2, '0');
+            const endHour = endDate.getHours().toString().padStart(2, '0');
+            const endMin = endDate.getMinutes().toString().padStart(2, '0');
+
+            return {
+                id: b.id,
+                employee: b.user ? b.user.name : 'System User',
+                assetId: b.asset_id,
+                assetName: b.asset ? b.asset.name : 'Unknown Asset',
+                date: b.start_date ? new Date(b.start_date).toISOString().split('T')[0] : '',
+                time: `${startHour}:${startMin} - ${endHour}:${endMin}`,
+                status: b.status.charAt(0).toUpperCase() + b.status.slice(1).toLowerCase(), // UPCOMING -> Upcoming
+                purpose: b.purpose
+            };
+        });
+
+        res.status(200).json({ success: true, data: formatted });
     } catch (error) {
         res.status(500).json({ success: false, message: "Error pulling booking directory.", error: error.message });
     }

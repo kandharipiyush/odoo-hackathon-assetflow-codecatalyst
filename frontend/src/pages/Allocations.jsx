@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
-import axios from 'axios'
+import { api as axios } from '../services/authService'
 import {
   ArrowRightLeft,
   Package,
@@ -91,29 +91,47 @@ export default function Allocations() {
   const [trReason, setTrReason] = useState('');
   const [trMessage, setTrMessage] = useState(null);
 
+  // Live lookup states
+  const [assetsList, setAssetsList] = useState([]);
+  const [employeesList, setEmployeesList] = useState([]);
+  const [departmentsList, setDepartmentsList] = useState([]);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [allocRes, transferRes] = await Promise.allSettled([
+      const [allocRes, transferRes, assetsRes, employeesRes, deptsRes] = await Promise.allSettled([
         axios.get(`${API_BASE_URL}/allocations`),
-        axios.get(`${API_BASE_URL}/transfers`)
+        axios.get(`${API_BASE_URL}/transfers`),
+        axios.get(`${API_BASE_URL}/assets`),
+        axios.get(`${API_BASE_URL}/org/users`),
+        axios.get(`${API_BASE_URL}/org/departments`)
       ]);
       setAllocations(
         allocRes.status === 'fulfilled' && allocRes.value.data?.data
           ? allocRes.value.data.data
-          : FALLBACK_ALLOCATIONS
+          : []
       );
       setTransfers(
         transferRes.status === 'fulfilled' && transferRes.value.data?.data
           ? transferRes.value.data.data
-          : FALLBACK_TRANSFERS
+          : []
       );
+
+      if (assetsRes.status === 'fulfilled' && assetsRes.value.data?.data) {
+        setAssetsList(assetsRes.value.data.data);
+      }
+      if (employeesRes.status === 'fulfilled' && employeesRes.value.data?.data) {
+        setEmployeesList(employeesRes.value.data.data);
+      }
+      if (deptsRes.status === 'fulfilled' && deptsRes.value.data?.data) {
+        setDepartmentsList(deptsRes.value.data.data);
+      }
     } catch (err) {
       console.warn("Endpoint unavailable. Using fallback data.", err);
       setError("Connection failed. Showing cached records.");
-      setAllocations(FALLBACK_ALLOCATIONS);
-      setTransfers(FALLBACK_TRANSFERS);
+      setAllocations([]);
+      setTransfers([]);
     } finally {
       setLoading(false);
     }
@@ -257,14 +275,36 @@ export default function Allocations() {
             )}
 
             <form onSubmit={handleAllocateAsset} className="space-y-4 text-xs font-semibold">
-              <div>
-                <label htmlFor="al_asset_id" className="block text-[#94A3B8] uppercase tracking-wider mb-1.5">Asset ID *</label>
-                <input id="al_asset_id" type="text" required placeholder="e.g. asset-uuid-here" value={alAssetId} onChange={e => setAlAssetId(e.target.value)} className="w-full bg-[#0F172A] border border-[#334155] rounded-lg p-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-[#2962FF] focus:ring-1 focus:ring-[#2962FF]" />
-              </div>
-              <div>
-                <label htmlFor="al_employee_id" className="block text-[#94A3B8] uppercase tracking-wider mb-1.5">Employee ID *</label>
-                <input id="al_employee_id" type="text" required placeholder="e.g. user-uuid-here" value={alEmployeeId} onChange={e => setAlEmployeeId(e.target.value)} className="w-full bg-[#0F172A] border border-[#334155] rounded-lg p-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-[#2962FF] focus:ring-1 focus:ring-[#2962FF]" />
-              </div>
+               <div>
+                 <label htmlFor="al_asset_id" className="block text-[#94A3B8] uppercase tracking-wider mb-1.5">Asset *</label>
+                 <select
+                   id="al_asset_id"
+                   required
+                   value={alAssetId}
+                   onChange={e => setAlAssetId(e.target.value)}
+                   className="w-full bg-[#0F172A] border border-[#334155] rounded-lg p-2.5 text-white focus:outline-none focus:border-[#2962FF] focus:ring-1 focus:ring-[#2962FF]"
+                 >
+                   <option value="">Select Asset...</option>
+                   {assetsList.filter(a => a.status === 'AVAILABLE').map(asset => (
+                     <option key={asset.id} value={asset.id}>{asset.name} ({asset.asset_tag})</option>
+                   ))}
+                 </select>
+               </div>
+               <div>
+                 <label htmlFor="al_employee_id" className="block text-[#94A3B8] uppercase tracking-wider mb-1.5">Employee *</label>
+                 <select
+                   id="al_employee_id"
+                   required
+                   value={alEmployeeId}
+                   onChange={e => setAlEmployeeId(e.target.value)}
+                   className="w-full bg-[#0F172A] border border-[#334155] rounded-lg p-2.5 text-white focus:outline-none focus:border-[#2962FF] focus:ring-1 focus:ring-[#2962FF]"
+                 >
+                   <option value="">Select Employee...</option>
+                   {employeesList.map(emp => (
+                     <option key={emp.id} value={emp.id}>{emp.name} ({emp.email})</option>
+                   ))}
+                 </select>
+               </div>
               <div>
                 <label htmlFor="al_return_date" className="block text-[#94A3B8] uppercase tracking-wider mb-1.5">Expected Return Date</label>
                 <input id="al_return_date" type="date" value={alReturnDate} onChange={e => setAlReturnDate(e.target.value)} className="w-full bg-[#0F172A] border border-[#334155] rounded-lg p-2.5 text-white focus:outline-none focus:ring-1 focus:ring-[#2962FF]" />
@@ -309,7 +349,7 @@ export default function Allocations() {
                     allocations.map(alloc => (
                       <tr key={alloc.id} className="hover:bg-[#0f172a]/20 transition-all duration-150">
                         <td className="px-6 py-4 font-bold text-white">{alloc.asset?.name || alloc.asset_id}</td>
-                        <td className="px-6 py-4 font-mono text-[#CBD5E1]">{alloc.allocated_to_id}</td>
+                         <td className="px-6 py-4 font-mono text-[#CBD5E1]">{alloc.allocated_to?.name || alloc.allocated_to_id}</td>
                         <td className="px-6 py-4 font-mono text-[#CBD5E1]">{alloc.allocated_at ? new Date(alloc.allocated_at).toLocaleDateString() : '—'}</td>
                         <td className="px-6 py-4 text-[#CBD5E1] max-w-[200px] truncate" title={alloc.notes}>{alloc.notes || '—'}</td>
                         <td className="px-6 py-4 text-center"><StatusBadge status={alloc.status} /></td>
@@ -345,13 +385,35 @@ export default function Allocations() {
 
             <form onSubmit={handleCreateTransfer} className="space-y-4 text-xs font-semibold">
               <div>
-                <label htmlFor="tr_asset_id" className="block text-[#94A3B8] uppercase tracking-wider mb-1.5">Asset ID *</label>
-                <input id="tr_asset_id" type="text" required placeholder="e.g. asset-uuid-here" value={trAssetId} onChange={e => setTrAssetId(e.target.value)} className="w-full bg-[#0F172A] border border-[#334155] rounded-lg p-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-[#2962FF] focus:ring-1 focus:ring-[#2962FF]" />
-              </div>
-              <div>
-                <label htmlFor="tr_dept_id" className="block text-[#94A3B8] uppercase tracking-wider mb-1.5">Target Department ID *</label>
-                <input id="tr_dept_id" type="text" required placeholder="e.g. dept-uuid-here" value={trDeptId} onChange={e => setTrDeptId(e.target.value)} className="w-full bg-[#0F172A] border border-[#334155] rounded-lg p-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-[#2962FF] focus:ring-1 focus:ring-[#2962FF]" />
-              </div>
+                 <label htmlFor="tr_asset_id" className="block text-[#94A3B8] uppercase tracking-wider mb-1.5">Asset *</label>
+                 <select
+                   id="tr_asset_id"
+                   required
+                   value={trAssetId}
+                   onChange={e => setTrAssetId(e.target.value)}
+                   className="w-full bg-[#0F172A] border border-[#334155] rounded-lg p-2.5 text-white focus:outline-none focus:border-[#2962FF] focus:ring-1 focus:ring-[#2962FF]"
+                 >
+                   <option value="">Select Asset...</option>
+                   {assetsList.map(asset => (
+                     <option key={asset.id} value={asset.id}>{asset.name} ({asset.asset_tag})</option>
+                   ))}
+                 </select>
+               </div>
+               <div>
+                 <label htmlFor="tr_dept_id" className="block text-[#94A3B8] uppercase tracking-wider mb-1.5">Target Department *</label>
+                 <select
+                   id="tr_dept_id"
+                   required
+                   value={trDeptId}
+                   onChange={e => setTrDeptId(e.target.value)}
+                   className="w-full bg-[#0F172A] border border-[#334155] rounded-lg p-2.5 text-white focus:outline-none focus:border-[#2962FF] focus:ring-1 focus:ring-[#2962FF]"
+                 >
+                   <option value="">Select Target Department...</option>
+                   {departmentsList.map(dept => (
+                     <option key={dept.id} value={dept.id}>{dept.name}</option>
+                   ))}
+                 </select>
+               </div>
               <div>
                 <label htmlFor="tr_reason" className="block text-[#94A3B8] uppercase tracking-wider mb-1.5">Reason</label>
                 <input id="tr_reason" type="text" placeholder="Reason for transfer" value={trReason} onChange={e => setTrReason(e.target.value)} className="w-full bg-[#0F172A] border border-[#334155] rounded-lg p-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-[#2962FF] focus:ring-1 focus:ring-[#2962FF]" />

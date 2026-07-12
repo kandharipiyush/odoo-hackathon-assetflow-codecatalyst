@@ -181,3 +181,15 @@ exports.login = async (req, res) => {
     });
   }
 };
+
+// GET /api/auth/departments (Publicly fetch all departments for signup dropdown)
+exports.getDepartments = async (req, res) => {
+  try {
+    const departments = await prisma.department.findMany({
+      orderBy: { name: 'asc' }
+    });
+    res.status(200).json({ success: true, data: departments });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Error fetching departments.", error: error.message });
+  }
+};

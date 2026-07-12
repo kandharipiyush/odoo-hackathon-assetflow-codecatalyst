@@ -1,7 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Navigate, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { authService } from '../services/authService';
+import { authService, api as axios } from '../services/authService';
 import { 
   UserPlus, User, Mail, Building2, Lock, 
   Eye, EyeOff, ShieldAlert, CheckCircle 
@@ -21,6 +21,21 @@ export default function Signup() {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [departmentsList, setDepartmentsList] = useState([]);
+
+  useEffect(() => {
+    const loadDepartments = async () => {
+      try {
+        const res = await axios.get('/auth/departments');
+        if (res.data && Array.isArray(res.data.data)) {
+          setDepartmentsList(res.data.data);
+        }
+      } catch (err) {
+        console.error("Failed to load departments:", err);
+      }
+    };
+    loadDepartments();
+  }, []);
   
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -198,9 +213,9 @@ export default function Signup() {
                 className="w-full bg-[#0F172A] border border-[#334155] rounded-[10px] pl-11 pr-4 py-2.5 text-[#F8FAFC] text-sm focus:outline-none focus:border-[#0052CC] focus:ring-2 focus:ring-[#0052CC]/20 transition-all duration-200 disabled:opacity-50 cursor-pointer appearance-none"
               >
                 <option value="" className="text-[#64748B]">Select Department...</option>
-                <option value="01ac9fc8-ec2e-4f13-a7e2-a7f9b14ae717">IT</option>
-                <option value="1a922d98-f8cd-4d51-bbaf-875c96735b8d">HR</option>
-                <option value="04d6a263-b4e6-4929-8d26-47b3601a2add">Finance</option>
+                {departmentsList.map(dept => (
+                  <option key={dept.id} value={dept.id}>{dept.name}</option>
+                ))}
               </select>
               {/* Custom dropdown arrow */}
               <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">

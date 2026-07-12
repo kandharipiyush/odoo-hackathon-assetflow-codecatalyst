@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { api as axios } from '../services/authService';
 import { useAuth } from '../hooks/useAuth';
 import { 
   CheckCircle2, 
@@ -26,14 +27,13 @@ export default function Dashboard() {
   // Search query — stub for future asset/booking/maintenance filtering
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Dashboard mock metrics
-  const [metrics] = useState({
-    assetsAvailable: 842,
-    assetsAllocated: 384,
-    maintenanceToday: 5,
-    activeBookings: 18,
-    pendingTransfers: 12,
-    upcomingReturns: 7,
+  const [metrics, setMetrics] = useState({
+    assetsAvailable: 0,
+    assetsAllocated: 0,
+    maintenanceToday: 0,
+    activeBookings: 0,
+    pendingTransfers: 0,
+    upcomingReturns: 0,
   });
 
   // Mock system alert values (dismissible / inspectable)
@@ -91,10 +91,22 @@ export default function Dashboard() {
     return new Date().toLocaleDateString('en-US', options);
   }, []);
 
-  // Simulate initial data loading
+  // Fetch live stats loading from database
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 600);
-    return () => clearTimeout(timer);
+    const fetchStats = async () => {
+      setIsLoading(true);
+      try {
+        const response = await axios.get('/dashboard/stats');
+        if (response.data && response.data.success) {
+          setMetrics(response.data.data);
+        }
+      } catch (err) {
+        console.error("Failed to load dashboard metrics:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchStats();
   }, []);
 
   // Handle resolving or inspecting system alerts — uses styled dialog instead of alert()

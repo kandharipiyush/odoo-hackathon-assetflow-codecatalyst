@@ -61,7 +61,8 @@ exports.getAllAllocations = async (req, res) => {
         const allocations = await prisma.assetAllocation.findMany({
             where: { status: "ACTIVE" },
             include: {
-                asset: true // Automatically side-load asset properties
+                asset: true, // Automatically side-load asset properties
+                allocated_to: true // Include user to display name
             }
         });
         res.status(200).json({ success: true, count: allocations.length, data: allocations });
