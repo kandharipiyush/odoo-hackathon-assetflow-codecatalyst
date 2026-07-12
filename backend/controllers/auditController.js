@@ -4,18 +4,18 @@ const prisma = new PrismaClient();
 // 1. START A NEW AUDIT CYCLE
 exports.startAuditCycle = async (req, res) => {
     try {
-        const { title, description, end_date } = req.body;
+        const { name, end_date } = req.body;
         const auditor_id = req.user?.id || "TEST_AUDITOR_ID"; // System fallback
 
-        if (!title) {
-            return res.status(400).json({ success: false, message: "Audit title is required." });
+        if (!name) {
+            return res.status(400).json({ success: false, message: "Audit name is required." });
         }
 
         const auditCycle = await prisma.auditCycle.create({
             data: {
-                title,
-                description,
-                end_date: end_date ? new Date(end_date) : null,
+                name,
+                start_date: new Date(),
+                end_date: end_date ? new Date(end_date) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
                 auditor_id,
                 status: "OPEN"
             }
@@ -66,5 +66,18 @@ exports.verifyAuditItem = async (req, res) => {
         res.status(201).json({ success: true, data: auditItem });
     } catch (error) {
         res.status(500).json({ success: false, message: "Error submitting verification details.", error: error.message });
+    }
+};
+
+// 3. GET ALL AUDIT CYCLES
+exports.getAllAuditCycles = async (req, res) => {
+    try {
+        const cycles = await prisma.auditCycle.findMany({
+            include: { audit_items: { include: { asset: true } } },
+            orderBy: { created_at: 'desc' }
+        });
+        res.status(200).json({ success: true, count: cycles.length, data: cycles });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Error fetching audit cycles.", error: error.message });
     }
 };

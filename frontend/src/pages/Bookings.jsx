@@ -254,7 +254,19 @@ export default function Bookings() {
 
     const assetObj = BOOKABLE_ASSETS.find(a => a.id === selectedAssetId);
 
-    const newBooking = {
+    // Build ISO date strings for the backend payload contract
+    const startISO = new Date(`${bookingDate}T${startTime}:00`).toISOString();
+    const endISO = new Date(`${bookingDate}T${endTime}:00`).toISOString();
+
+    const backendPayload = {
+      asset_id: selectedAssetId,
+      start_time: startISO,
+      end_time: endISO,
+      purpose
+    };
+
+    // Local history entry for immediate UI feedback
+    const localBooking = {
       id: `BKG-${Date.now().toString().slice(-3)}`,
       employee,
       assetId: selectedAssetId,
@@ -265,16 +277,16 @@ export default function Bookings() {
     };
 
     try {
-      await axios.post(`${API_BASE_URL}/bookings`, newBooking);
-      setHistory(prev => [newBooking, ...prev]);
+      await axios.post(`${API_BASE_URL}/bookings`, backendPayload);
+      setHistory(prev => [localBooking, ...prev]);
     } catch (err) {
       console.warn("Backend saving request skipped. Recording reservation changes locally.", err);
-      setHistory(prev => [newBooking, ...prev]);
+      setHistory(prev => [localBooking, ...prev]);
     }
 
     setAvailabilityMessage({
       type: 'success',
-      text: `Resource Successfully Reserved! Ticket sequence ${newBooking.id} created.`
+      text: `Resource Successfully Reserved! Ticket sequence ${localBooking.id} created.`
     });
 
     setEmployee('');

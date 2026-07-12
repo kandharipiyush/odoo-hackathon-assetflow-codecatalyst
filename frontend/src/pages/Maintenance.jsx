@@ -258,7 +258,9 @@ export default function Maintenance() {
             ...item,
             status: COLUMNS[nextIndex].id,
             technician: updatedTech,
-            healthScore: updatedHealth
+            healthScore: updatedHealth,
+            _previousStatus: item.status,
+            _nextStatus: COLUMNS[nextIndex].id
           };
           return updatedItem;
         }
@@ -266,9 +268,20 @@ export default function Maintenance() {
       });
 
       if (updatedItem) {
-        axios.put(`${API_BASE_URL}/maintenance/${reqId}`, updatedItem).catch(err => {
-          console.warn("Backend save failed, modified locally.", err);
-        });
+        // Map Kanban column transitions to the backend action enum
+        const nextStatus = updatedItem._nextStatus;
+        let action = null;
+        if (nextStatus === 'In Progress') {
+          action = 'APPROVE_REPAIR';
+        } else if (nextStatus === 'Resolved' || nextStatus === 'Available') {
+          action = 'RESOLVE_FIX';
+        }
+
+        if (action) {
+          axios.patch(`${API_BASE_URL}/maintenance/${reqId}/resolve`, { action }).catch(err => {
+            console.warn("Backend PATCH failed, modified locally.", err);
+          });
+        }
       }
       return nextRequests;
     });

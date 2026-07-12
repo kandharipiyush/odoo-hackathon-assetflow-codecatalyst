@@ -59,7 +59,7 @@ exports.resolveMaintenance = async (req, res) => {
             if (action === "RESOLVE_FIX") {
                 const updatedRequest = await tx.maintenanceRequest.update({
                     where: { id },
-                    data: { status: "RESOLVED", resolved_at: new Date() }
+                    data: { status: "RESOLVED", completed_at: new Date() }
                 });
 
                 // Restore asset back to deployment-ready pool
@@ -75,5 +75,18 @@ exports.resolveMaintenance = async (req, res) => {
         res.status(200).json({ success: true, data: updatedData });
     } catch (error) {
         res.status(500).json({ success: false, message: "Error modifying maintenance state sequence.", error: error.message });
+    }
+};
+
+// 3. GET ALL MAINTENANCE REQUESTS
+exports.getAllRequests = async (req, res) => {
+    try {
+        const requests = await prisma.maintenanceRequest.findMany({
+            include: { asset: true },
+            orderBy: { created_at: 'desc' }
+        });
+        res.status(200).json({ success: true, count: requests.length, data: requests });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Error fetching maintenance requests.", error: error.message });
     }
 };

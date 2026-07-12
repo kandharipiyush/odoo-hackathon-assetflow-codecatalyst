@@ -76,3 +76,16 @@ exports.actionTransferRequest = async (req, res) => {
         res.status(500).json({ success: false, message: "Error processing transfer decision.", error: error.message });
     }
 };
+
+// 3. GET ALL TRANSFER REQUESTS
+exports.getAllTransfers = async (req, res) => {
+    try {
+        const transfers = await prisma.transferRequest.findMany({
+            include: { asset: true, target_department: true },
+            orderBy: { created_at: 'desc' }
+        });
+        res.status(200).json({ success: true, count: transfers.length, data: transfers });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Error fetching transfer requests.", error: error.message });
+    }
+};

@@ -12,6 +12,8 @@ import Dashboard from '../pages/Dashboard';
 import OrgSetup from '../pages/OrgSetup';
 import Login from '../pages/Login';
 import Signup from '../pages/Signup';
+import Allocations from '../pages/Allocations';
+import Audits from '../pages/Audits';
 
 // Import icons for fallbacks & mock screens
 import { ShieldAlert } from 'lucide-react';
@@ -21,34 +23,6 @@ import { ShieldAlert } from 'lucide-react';
 // ==========================================
 
 // Mock pages removed - imported actual pages
-
-const MockAllocation = () => (
-  <div className="bg-[#1E293B] border border-[#334155] rounded-xl p-8 max-w-4xl shadow-xl">
-    <h2 className="text-2xl font-bold text-[#F8FAFC] mb-4">Asset Allocation & Transfer</h2>
-    <p className="text-[#94A3B8] mb-6">
-      Issue, reassign, or release company hardware and tools to departments or individual employees.
-    </p>
-    <div className="bg-[#0F172A] p-6 rounded-lg border border-[#334155]">
-      <p className="text-sm text-[#94A3B8]">
-        Allocation controls are available for **Admin**, **Asset Manager**, and **Department Head** roles.
-      </p>
-    </div>
-  </div>
-);
-
-const MockAudit = () => (
-  <div className="bg-[#1E293B] border border-[#334155] rounded-xl p-8 max-w-4xl shadow-xl">
-    <h2 className="text-2xl font-bold text-[#F8FAFC] mb-4">Physical Asset Auditing</h2>
-    <p className="text-[#94A3B8] mb-6">
-      Initiate periodic audits, upload scan sheets, and reconcile asset inventory discrepancies.
-    </p>
-    <div className="bg-[#0F172A] p-6 rounded-lg border border-[#334155]">
-      <p className="text-sm text-[#94A3B8]">
-        Auditing tools are restricted to **Admin** and **Asset Manager** roles.
-      </p>
-    </div>
-  </div>
-);
 
 const MockReports = () => (
   <div className="bg-[#1E293B] border border-[#334155] rounded-xl p-8 max-w-4xl shadow-xl">
@@ -247,7 +221,7 @@ export const Router = () => {
             } />
             <Route path="/allocation" element={
               <DashboardLayout title="Asset Allocations">
-                <MockAllocation />
+                <Allocations />
               </DashboardLayout>
             } />
             <Route path="/maintenance" element={
@@ -266,7 +240,7 @@ export const Router = () => {
           <Route element={<ProtectedRoute allowedRoles={['Admin', 'Asset Manager']} />}>
             <Route path="/audit" element={
               <DashboardLayout title="Asset Auditing">
-                <MockAudit />
+                <Audits />
               </DashboardLayout>
             } />
           </Route>
