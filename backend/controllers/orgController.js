@@ -231,3 +231,43 @@ exports.promoteUser = async (req, res) => {
     });
   }
 };
+
+// GET /api/org/users (List all users formatted for frontend)
+exports.getUsers = async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      include: {
+        department: true
+      },
+      orderBy: { name: 'asc' }
+    });
+
+    const roleMapping = {
+      'ADMIN': 'Admin',
+      'EMPLOYEE': 'Employee',
+      'ASSET_MANAGER': 'Asset Manager',
+      'DEPARTMENT_HEAD': 'Department Head'
+    };
+
+    const formattedUsers = users.map(user => ({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: roleMapping[user.role] || user.role,
+      status: user.status === 'ACTIVE' ? 'Active' : 'Inactive',
+      department: user.department ? user.department.name : 'None',
+      created_at: user.created_at
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: formattedUsers
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve users.",
+      error: error.message
+    });
+  }
+};

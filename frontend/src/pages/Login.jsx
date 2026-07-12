@@ -273,33 +273,6 @@ export default function Login() {
               </Link>
             </p>
           </div>
-
-          {/* Quick Sandbox Logins */}
-          <div className="mt-8 pt-6 border-t border-[#334155]">
-            <span className="block text-[11px] uppercase tracking-widest text-[#64748B] font-bold mb-3.5 text-center">
-              Developer Sandbox Access
-            </span>
-            <div className="grid grid-cols-2 gap-2.5">
-              {[
-                { role: 'Admin', name: 'Alex Carter', email: 'admin@company.com' },
-                { role: 'Asset Manager', name: 'Sarah Jenkins', email: 'manager@company.com' },
-                { role: 'Dept Head', name: 'David Miller', email: 'head@company.com' },
-                { role: 'Employee', name: 'John Doe', email: 'employee@company.com' },
-              ].map(({ role, name, email: mockEmail }) => (
-                <button
-                  key={mockEmail}
-                  type="button"
-                  onClick={() => handleQuickLogin(mockEmail)}
-                  disabled={isSubmitting}
-                  className="flex flex-col items-center bg-[#0F172A] hover:bg-[#0052CC]/10 border border-[#334155] hover:border-[#0052CC]/30 p-2.5 rounded-[10px] text-center transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
-                  aria-label={`Quick login as ${role} (${name})`}
-                >
-                  <span className="text-xs font-bold text-[#F8FAFC]">{role}</span>
-                  <span className="text-[10px] text-[#94A3B8] mt-0.5">{name}</span>
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
 
         {/* Footer branding */}

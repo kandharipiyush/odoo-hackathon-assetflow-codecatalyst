@@ -223,9 +223,38 @@ export default function Maintenance() {
         axios.get(`${API_BASE_URL}/assets`)
       ]);
       if (maintRes.status === 'fulfilled' && Array.isArray(maintRes.value.data?.data)) {
-        setRequests(maintRes.value.data.data);
+        // Map DB fields to Kanban card expected format
+        const STATUS_MAP = {
+          'PENDING': 'Pending Approval',
+          'APPROVED': 'Approved',
+          'ASSIGNED': 'Technician Assigned',
+          'IN_PROGRESS': 'In Progress',
+          'RESOLVED': 'Resolved',
+          'REJECTED': 'Available'
+        };
+        const PRIORITY_MAP = {
+          'LOW': 'Low',
+          'MEDIUM': 'Medium',
+          'HIGH': 'High',
+          'EMERGENCY': 'Emergency'
+        };
+        const mapped = maintRes.value.data.data.map(r => ({
+          id: r.id,
+          tag: r.asset?.asset_tag || r.asset_id,
+          name: r.issue_description || 'Maintenance Request',
+          priority: PRIORITY_MAP[r.priority] || r.priority || 'Medium',
+          date: r.created_at ? new Date(r.created_at).toISOString().split('T')[0] : '',
+          technician: r.assigned_to?.name || 'Unassigned',
+          condition: r.asset?.condition || 'Unknown',
+          healthScore: 50,
+          status: STATUS_MAP[r.status] || r.status || 'Pending Approval'
+        }));
+        setRequests(mapped);
       } else {
         setRequests([]);
+        if (maintRes.status === 'rejected') {
+          setError(maintRes.reason?.response?.data?.message || maintRes.reason?.message || "Failed to load maintenance records.");
+        }
       }
       if (assetsRes.status === 'fulfilled' && Array.isArray(assetsRes.value.data?.data)) {
         setAssetsList(assetsRes.value.data.data);
@@ -315,7 +344,7 @@ export default function Maintenance() {
         // Map Kanban column transitions to the backend action enum
         const nextStatus = updatedItem._nextStatus;
         let action = null;
-        if (nextStatus === 'In Progress') {
+        if (nextStatus === 'Approved' || nextStatus === 'Technician Assigned' || nextStatus === 'In Progress') {
           action = 'APPROVE_REPAIR';
         } else if (nextStatus === 'Resolved' || nextStatus === 'Available') {
           action = 'RESOLVE_FIX';

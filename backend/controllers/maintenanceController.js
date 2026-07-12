@@ -82,7 +82,7 @@ exports.resolveMaintenance = async (req, res) => {
 exports.getAllRequests = async (req, res) => {
     try {
         const requests = await prisma.maintenanceRequest.findMany({
-            include: { asset: true },
+            include: { asset: true, assigned_to: true, requester: true },
             orderBy: { created_at: 'desc' }
         });
         res.status(200).json({ success: true, count: requests.length, data: requests });

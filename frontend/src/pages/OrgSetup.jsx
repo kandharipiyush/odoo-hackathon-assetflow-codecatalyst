@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { api as axios } from '../services/authService';
 import { 
   Building2, 
   Tag, 
@@ -22,43 +23,46 @@ export default function OrgSetup() {
   const [activeTab, setActiveTab] = useState('departments');
   const [isLoading, setIsLoading] = useState(true);
 
-  // Simulate initial data loading
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const [deptRes, catRes, usersRes] = await Promise.all([
+        axios.get('/org/departments'),
+        axios.get('/org/asset-categories'),
+        axios.get('/org/users')
+      ]);
+      if (deptRes.data && Array.isArray(deptRes.data.data)) {
+        setDepartments(deptRes.data.data);
+      }
+      if (catRes.data && Array.isArray(catRes.data.data)) {
+        setCategories(catRes.data.data);
+      }
+      if (usersRes.data && Array.isArray(usersRes.data.data)) {
+        setEmployees(usersRes.data.data);
+      }
+    } catch (error) {
+      console.error("Failed to load organization data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 500);
-    return () => clearTimeout(timer);
+    fetchData();
   }, []);
 
   // ==========================================
-  // LOCAL MOCK STATE DATA
+  // REAL STATE DATA
   // ==========================================
   
   // 1. Departments State
-  const [departments, setDepartments] = useState([
-    { id: 'dept-1', name: 'Engineering', parentName: 'None', headName: 'Alex Carter', status: 'Active' },
-    { id: 'dept-2', name: 'IT Support', parentName: 'Operations', headName: 'David Miller', status: 'Active' },
-    { id: 'dept-3', name: 'Marketing', parentName: 'None', headName: 'Sarah Jenkins', status: 'Active' },
-    { id: 'dept-4', name: 'Human Resources', parentName: 'Operations', headName: 'Jane Watson', status: 'Active' },
-    { id: 'dept-5', name: 'Finance & Legal', parentName: 'None', headName: 'Donald Sterling', status: 'Inactive' },
-  ]);
+  const [departments, setDepartments] = useState([]);
 
   // 2. Asset Categories State
-  const [categories, setCategories] = useState([
-    { id: 'cat-1', name: 'Laptops', description: 'Enterprise-grade work notebooks', warranty: '36 Months', status: 'Active' },
-    { id: 'cat-2', name: 'Monitors', description: 'Dual Display configurations', warranty: '24 Months', status: 'Active' },
-    { id: 'cat-3', name: 'Network Hardware', description: 'Cisco switches, routers, and hubs', warranty: '60 Months', status: 'Active' },
-    { id: 'cat-4', name: 'Office Furniture', description: 'Ergonomic desks and chairs', warranty: '12 Months', status: 'Active' },
-    { id: 'cat-5', name: 'AV Equipment', description: 'Projectors, speakers, and cameras', warranty: '12 Months', status: 'Inactive' },
-  ]);
+  const [categories, setCategories] = useState([]);
 
   // 3. Employee Directory State
-  const [employees, setEmployees] = useState([
-    { id: 'emp-1', name: 'Alex Carter', email: 'admin@company.com', department: 'Engineering', role: 'Admin', status: 'Active' },
-    { id: 'emp-2', name: 'Sarah Jenkins', email: 'manager@company.com', department: 'Marketing', role: 'Asset Manager', status: 'Active' },
-    { id: 'emp-3', name: 'David Miller', email: 'head@company.com', department: 'IT Support', role: 'Department Head', status: 'Active' },
-    { id: 'emp-4', name: 'John Doe', email: 'employee@company.com', department: 'Engineering', role: 'Employee', status: 'Active' },
-    { id: 'emp-5', name: 'Jane Watson', email: 'jane@company.com', department: 'Human Resources', role: 'Employee', status: 'Active' },
-    { id: 'emp-6', name: 'Alice Cooper', email: 'alice@company.com', department: 'Finance & Legal', role: 'Employee', status: 'Inactive' },
-  ]);
+  const [employees, setEmployees] = useState([]);
 
   // ==========================================
   // SEARCH STATE
@@ -148,19 +152,23 @@ export default function OrgSetup() {
   // ==========================================
 
   // Departments CRUD
-  const handleSaveDept = () => {
-    if (!deptForm.name.trim() || !deptForm.headName.trim()) {
-      setFormError('Name and Department Head are required.');
+  const handleSaveDept = async () => {
+    if (!deptForm.name.trim()) {
+      setFormError('Department name is required.');
       return;
     }
 
-    if (modalType === 'add-dept') {
-      const newDept = { id: `dept-${Date.now()}`, ...deptForm };
-      setDepartments([...departments, newDept]);
-    } else if (modalType === 'edit-dept' && selectedItem) {
-      setDepartments(departments.map(d => d.id === selectedItem.id ? { ...d, ...deptForm } : d));
+    try {
+      if (modalType === 'add-dept') {
+        const response = await axios.post('/org/departments', { name: deptForm.name });
+        if (response.data && response.data.success) {
+          setDepartments([...departments, response.data.data]);
+        }
+      }
+      closeModal();
+    } catch (err) {
+      setFormError(err.response?.data?.message || 'Failed to save department.');
     }
-    closeModal();
   };
 
   const toggleDeptStatus = (id) => {
@@ -173,19 +181,26 @@ export default function OrgSetup() {
   };
 
   // Asset Categories CRUD
-  const handleSaveCat = () => {
-    if (!catForm.name.trim() || !catForm.warranty.trim()) {
-      setFormError('Name and Warranty period are required.');
+  const handleSaveCat = async () => {
+    if (!catForm.name.trim()) {
+      setFormError('Category name is required.');
       return;
     }
 
-    if (modalType === 'add-cat') {
-      const newCat = { id: `cat-${Date.now()}`, ...catForm };
-      setCategories([...categories, newCat]);
-    } else if (modalType === 'edit-cat' && selectedItem) {
-      setCategories(categories.map(c => c.id === selectedItem.id ? { ...c, ...catForm } : c));
+    try {
+      if (modalType === 'add-cat') {
+        const response = await axios.post('/org/asset-categories', {
+          name: catForm.name,
+          description: catForm.description
+        });
+        if (response.data && response.data.success) {
+          setCategories([...categories, response.data.data]);
+        }
+      }
+      closeModal();
+    } catch (err) {
+      setFormError(err.response?.data?.message || 'Failed to save category.');
     }
-    closeModal();
   };
 
   const handleDeleteCat = (id) => {
@@ -205,15 +220,36 @@ export default function OrgSetup() {
   };
 
   // Employee actions (RBAC)
-  const promoteRole = (id) => {
-    const roles = ['Employee', 'Department Head', 'Asset Manager', 'Admin'];
-    setEmployees(employees.map(emp => {
-      if (emp.id === id) {
-        const nextIdx = (roles.indexOf(emp.role) + 1) % roles.length;
-        return { ...emp, role: roles[nextIdx] };
+  const promoteRole = async (id) => {
+    const emp = employees.find(e => e.id === id);
+    if (!emp) return;
+
+    // Cycle: Employee -> Asset Manager -> Department Head -> Asset Manager
+    let nextRoleEnum = 'ASSET_MANAGER';
+    if (emp.role === 'Employee') {
+      nextRoleEnum = 'ASSET_MANAGER';
+    } else if (emp.role === 'Asset Manager') {
+      nextRoleEnum = 'DEPARTMENT_HEAD';
+    } else if (emp.role === 'Department Head') {
+      nextRoleEnum = 'ASSET_MANAGER';
+    } else {
+      return; // Cannot promote or demote Admin
+    }
+
+    try {
+      const response = await axios.patch(`/org/users/${id}/promote`, { role: nextRoleEnum });
+      if (response.data && response.data.success) {
+        const roleMapping = {
+          'ADMIN': 'Admin',
+          'EMPLOYEE': 'Employee',
+          'ASSET_MANAGER': 'Asset Manager',
+          'DEPARTMENT_HEAD': 'Department Head'
+        };
+        setEmployees(employees.map(e => e.id === id ? { ...e, role: roleMapping[response.data.data.role] || response.data.data.role } : e));
       }
-      return emp;
-    }));
+    } catch (err) {
+      console.error("Failed to promote user:", err);
+    }
   };
 
   const toggleEmployeeStatus = (id) => {

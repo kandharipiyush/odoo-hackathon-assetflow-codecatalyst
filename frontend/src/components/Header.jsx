@@ -22,7 +22,7 @@ export default function Header({ title, onMenuToggle }) {
   const activeTitle = title || ROUTE_TITLES[location.pathname] || 'AssetFlow';
 
   return (
-    <header className="fixed top-0 right-0 left-0 md:left-auto z-30 flex items-center justify-between h-[72px] px-8 bg-main-bg border-b border-border-color transition-all duration-200">
+    <header className="w-full h-[72px] flex items-center justify-between px-8 bg-main-bg border-b border-border-color transition-all duration-200">
       
       {/* Left side: Hamburger (mobile) + Page Title */}
       <div className="flex items-center gap-4">

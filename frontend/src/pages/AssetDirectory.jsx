@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
-import axios from 'axios'
+import { api as axios } from '../services/authService'
 import {
   Search,
   Eye,
@@ -241,15 +241,15 @@ export default function AssetDirectory() {
     setError(null);
     try {
       const response = await axios.get(`${API_BASE_URL}/assets`);
-      if (Array.isArray(response.data)) {
-        setAssets(response.data);
+      if (response.data && Array.isArray(response.data.data)) {
+        setAssets(response.data.data);
       } else {
-        setAssets(FALLBACK_ASSETS);
+        setAssets([]);
       }
     } catch (err) {
       console.warn("API disconnect. Hydrating directory with fallback records.", err);
       setError("Connect request failed. Presenting localized registry logs snapshot.");
-      setAssets(FALLBACK_ASSETS);
+      setAssets([]);
     } finally {
       setLoading(false);
     }

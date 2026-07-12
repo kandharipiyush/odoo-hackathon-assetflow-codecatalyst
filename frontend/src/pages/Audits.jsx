@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import axios from 'axios'
+import { api as axios } from '../services/authService'
 import {
   ClipboardCheck,
   Plus,
@@ -43,22 +43,35 @@ export default function Audits() {
   const [viStatus, setViStatus] = useState('VERIFIED');
   const [viNotes, setViNotes] = useState('');
   const [viMessage, setViMessage] = useState(null);
+  const [assetsList, setAssetsList] = useState([]);
 
   const fetchCycles = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await axios.get(`${API_BASE_URL}/audits/cycles`);
-      setCycles(res.data?.data || FALLBACK_CYCLES);
-      if (res.data?.data && res.data.data.length > 0 && !viCycleId) {
-        setViCycleId(res.data.data[0].id);
+      const [cyclesRes, assetsRes] = await Promise.allSettled([
+        axios.get(`${API_BASE_URL}/audits/cycles`),
+        axios.get(`${API_BASE_URL}/assets`)
+      ]);
+      if (cyclesRes.status === 'fulfilled') {
+        const data = cyclesRes.value.data?.data || [];
+        setCycles(data);
+        const openCycles = data.filter(c => c.status !== 'CLOSED');
+        if (openCycles.length > 0 && !viCycleId) {
+          setViCycleId(openCycles[0].id);
+        }
+      } else {
+        setCycles([]);
+      }
+      if (assetsRes.status === 'fulfilled' && Array.isArray(assetsRes.value.data?.data)) {
+        setAssetsList(assetsRes.value.data.data);
       }
     } catch (err) {
       console.warn("Audit endpoint unavailable. Using fallback data.", err);
       setError("Connection failed. Showing cached records.");
-      setCycles(FALLBACK_CYCLES);
-      if (FALLBACK_CYCLES.length > 0 && !viCycleId) {
-        setViCycleId(FALLBACK_CYCLES[0].id);
+      setCycles([]);
+      if (!viCycleId) {
+        setViCycleId('');
       }
     } finally {
       setLoading(false);
@@ -210,8 +223,13 @@ export default function Audits() {
                 </select>
               </div>
               <div>
-                <label htmlFor="vi_asset_id" className="block text-[#94A3B8] uppercase tracking-wider mb-1.5">Asset ID / Tag *</label>
-                <input id="vi_asset_id" type="text" required placeholder="Scan or enter asset ID" value={viAssetId} onChange={e => setViAssetId(e.target.value)} className="w-full bg-[#0F172A] border border-[#334155] rounded-lg p-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-[#2962FF] focus:ring-1 focus:ring-[#2962FF]" />
+                <label htmlFor="vi_asset_id" className="block text-[#94A3B8] uppercase tracking-wider mb-1.5">Asset *</label>
+                <select id="vi_asset_id" required value={viAssetId} onChange={e => setViAssetId(e.target.value)} className="w-full bg-[#0F172A] border border-[#334155] rounded-lg p-2.5 text-white focus:outline-none focus:ring-1 focus:ring-[#2962FF]">
+                  <option value="">Select Asset to Verify...</option>
+                  {assetsList.map(asset => (
+                    <option key={asset.id} value={asset.id}>{asset.name} ({asset.asset_tag})</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label htmlFor="vi_status" className="block text-[#94A3B8] uppercase tracking-wider mb-1.5">Verification Status *</label>

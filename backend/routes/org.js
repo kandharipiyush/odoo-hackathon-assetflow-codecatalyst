@@ -15,4 +15,7 @@ router.post('/asset-categories', authenticate, checkRole(['ADMIN']), orgControll
 // Promote User Route (Only accessible by ADMIN)
 router.patch('/users/:id/promote', authenticate, checkRole(['ADMIN']), orgController.promoteUser);
 
+// List Users Route (Only accessible by ADMIN)
+router.get('/users', authenticate, checkRole(['ADMIN']), orgController.getUsers);
+
 module.exports = router;

@@ -38,7 +38,7 @@ exports.createAllocation = async (req, res) => {
                 allocated_to_id,
                 allocator_id,
                 notes,
-                expected_return_date: expected_return_date ? new Date(expected_return_date) : null,
+                due_date: expected_return_date ? new Date(expected_return_date) : null,
                 status: "ACTIVE"
             }
         });
@@ -51,6 +51,7 @@ exports.createAllocation = async (req, res) => {
 
         res.status(201).json({ success: true, data: allocation });
     } catch (error) {
+        console.error("Allocation Error:", error);
         res.status(500).json({ success: false, message: "Failed to deploy asset assignment.", error: error.message });
     }
 };

@@ -24,7 +24,7 @@ api.interceptors.request.use(
 );
 
 // Toggle mock authentication for frontend development (can be switched off once backend APIs are provided)
-const USE_MOCK = true;
+const USE_MOCK = false;
 
 // Mock database of users mapped by credentials
 const MOCK_USERS = {

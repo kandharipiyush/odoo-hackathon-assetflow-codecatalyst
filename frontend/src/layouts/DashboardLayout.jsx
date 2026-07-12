@@ -28,11 +28,7 @@ export default function DashboardLayout({ children, title }) {
         `}
       >
         {/* Header component, aligning left-offset based on sidebar width */}
-        <div
-          className={`fixed top-0 right-0 z-30 transition-all duration-200 ease-in-out left-0
-            ${isCollapsed ? 'md:left-[80px]' : 'md:left-[280px]'}
-          `}
-        >
+        <div className="w-full z-30">
           <Header
             title={title}
             onMenuToggle={() => setIsMobileOpen(!isMobileOpen)}
@@ -40,7 +36,7 @@ export default function DashboardLayout({ children, title }) {
         </div>
         
         {/* Main Content Area */}
-        <main className="flex-1 p-8 mt-[72px] overflow-y-auto">
+        <main className="flex-1 p-8 overflow-y-auto">
           {children}
         </main>
 
