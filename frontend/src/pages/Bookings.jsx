@@ -225,10 +225,12 @@ export default function Bookings() {
       return;
     }
 
-    const startHour = parseInt(startTime.split(':')[0]);
-    const endHour = parseInt(endTime.split(':')[0]);
+    const [startH, startM] = startTime.split(':').map(Number);
+    const [endH, endM] = endTime.split(':').map(Number);
+    const selStart = startH * 60 + startM;
+    const selEnd = endH * 60 + endM;
 
-    if (startHour >= endHour) {
+    if (selStart >= selEnd) {
       setAvailabilityMessage({
         type: 'error',
         text: 'Invalid range: Start time must occur strictly before the End time.'
@@ -238,14 +240,29 @@ export default function Bookings() {
 
     const assetObj = bookableAssets.find(a => a.id === selectedAssetId);
     if (!assetObj) return;
-    
-    // Check conflicts online and local fallbacks
-    if (selectedAssetId === 'AST-101' && bookingDate === '2026-07-14' && (
-      (startHour >= 9 && startHour < 11) || (endHour > 9 && endHour <= 11)
-    )) {
+
+    // Check overlaps against existing active bookings
+    const conflict = history.find(b => {
+      if (b.assetId !== selectedAssetId || b.date !== bookingDate) return false;
+      if (b.status?.toLowerCase() === 'cancelled') return false;
+
+      try {
+        const [bStartStr, bEndStr] = b.time.split(' - ');
+        const [bStartH, bStartM] = bStartStr.split(':').map(Number);
+        const [bEndH, bEndM] = bEndStr.split(':').map(Number);
+        const bStart = bStartH * 60 + bStartM;
+        const bEnd = bEndH * 60 + bEndM;
+
+        return selStart < bEnd && selEnd > bStart;
+      } catch (err) {
+        return false;
+      }
+    });
+
+    if (conflict) {
       setAvailabilityMessage({
         type: 'error',
-        text: `Conflict Warning! ${assetObj.name} is already reserved on this date from 09:00 - 11:00.`
+        text: `Conflict Warning! ${assetObj.name} is already reserved on this date from ${conflict.time} by ${conflict.employee}.`
       });
     } else {
       setAvailabilityMessage({
@@ -253,7 +270,7 @@ export default function Bookings() {
         text: `${assetObj.name} is available! No scheduling blockages found.`
       });
     }
-  }, [employee, purpose, startTime, endTime, selectedAssetId, bookingDate]);
+  }, [employee, purpose, startTime, endTime, selectedAssetId, bookingDate, history, bookableAssets]);
 
   const handleBookResource = async (e) => {
     e.preventDefault();
@@ -262,9 +279,12 @@ export default function Bookings() {
       return;
     }
 
-    const startHour = parseInt(startTime.split(':')[0]);
-    const endHour = parseInt(endTime.split(':')[0]);
-    if (startHour >= endHour) {
+    const [startH, startM] = startTime.split(':').map(Number);
+    const [endH, endM] = endTime.split(':').map(Number);
+    const selStart = startH * 60 + startM;
+    const selEnd = endH * 60 + endM;
+
+    if (selStart >= selEnd) {
       alert('Start hour must be before end hour!');
       return;
     }
@@ -272,6 +292,29 @@ export default function Bookings() {
     const assetObj = bookableAssets.find(a => a.id === selectedAssetId);
     if (!assetObj) {
       alert('Please select an asset to book.');
+      return;
+    }
+
+    // Check overlaps against existing active bookings
+    const conflict = history.find(b => {
+      if (b.assetId !== selectedAssetId || b.date !== bookingDate) return false;
+      if (b.status?.toLowerCase() === 'cancelled') return false;
+
+      try {
+        const [bStartStr, bEndStr] = b.time.split(' - ');
+        const [bStartH, bStartM] = bStartStr.split(':').map(Number);
+        const [bEndH, bEndM] = bEndStr.split(':').map(Number);
+        const bStart = bStartH * 60 + bStartM;
+        const bEnd = bEndH * 60 + bEndM;
+
+        return selStart < bEnd && selEnd > bStart;
+      } catch (err) {
+        return false;
+      }
+    });
+
+    if (conflict) {
+      alert(`Conflict Warning! ${assetObj.name} is already reserved on this date from ${conflict.time} by ${conflict.employee}.`);
       return;
     }
 
