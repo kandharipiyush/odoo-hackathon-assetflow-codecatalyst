@@ -1,8 +1,7 @@
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -92,14 +91,14 @@ enum NotificationType {
 // ==========================================
 
 model User {
-  id            String     @id @default(uuid()) @db.Uuid
+  id            String     @id @default(uuid()) 
   email         String     @unique
   password_hash String
   name          String
   role          Role       @default(EMPLOYEE)
   status        UserStatus @default(ACTIVE)
 
-  department_id String     @db.Uuid
+  department_id String     
   department    Department @relation("DepartmentUsers", fields: [department_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   // Relationships
@@ -125,16 +124,16 @@ model User {
 }
 
 model Department {
-  id   String @id @default(uuid()) @db.Uuid
+  id   String @id @default(uuid()) 
   name String @unique
 
   // Self-referencing hierarchy for Parent-Child departments
-  parent_id         String?      @db.Uuid
+  parent_id         String?      
   parent_department Department?  @relation("DepartmentHierarchy", fields: [parent_id], references: [id], onDelete: SetNull, onUpdate: Cascade)
   child_departments Department[] @relation("DepartmentHierarchy")
 
   // Department Head
-  head_id String? @unique @db.Uuid
+  head_id String? @unique 
   head    User?   @relation("DepartmentHead", fields: [head_id], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
   // Users in the department
@@ -148,7 +147,7 @@ model Department {
 }
 
 model AssetCategory {
-  id          String  @id @default(uuid()) @db.Uuid
+  id          String  @id @default(uuid()) 
   name        String  @unique
   description String?
   assets      Asset[]
@@ -158,16 +157,16 @@ model AssetCategory {
 }
 
 model Asset {
-  id          String      @id @default(uuid()) @db.Uuid
+  id          String      @id @default(uuid()) 
   name        String
   asset_tag   String      @unique // Matches asset_tag in controllers
   description String?
   status      AssetStatus @default(AVAILABLE)
 
-  category_id String        @db.Uuid
+  category_id String        
   category    AssetCategory @relation(fields: [category_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
-  created_by String @db.Uuid
+  created_by String 
   creator    User   @relation("AssetCreator", fields: [created_by], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   serial_number String?
@@ -193,14 +192,14 @@ model Asset {
 }
 
 model AssetAllocation {
-  id       String @id @default(uuid()) @db.Uuid
-  asset_id String @db.Uuid
+  id       String @id @default(uuid()) 
+  asset_id String 
   asset    Asset  @relation(fields: [asset_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
-  allocated_to_id String @db.Uuid
+  allocated_to_id String 
   allocated_to    User   @relation("AllocatedTo", fields: [allocated_to_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
-  allocator_id String @db.Uuid
+  allocator_id String 
   allocator    User   @relation("AssetAllocator", fields: [allocator_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   status       AllocationStatus @default(ACTIVE)
@@ -217,20 +216,20 @@ model AssetAllocation {
 }
 
 model TransferRequest {
-  id       String @id @default(uuid()) @db.Uuid
-  asset_id String @db.Uuid
+  id       String @id @default(uuid()) 
+  asset_id String 
   asset    Asset  @relation(fields: [asset_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
-  requester_id String @db.Uuid
+  requester_id String 
   requester    User   @relation("TransferRequester", fields: [requester_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
-  target_department_id String     @db.Uuid
+  target_department_id String     
   target_department    Department @relation("TargetDepartment", fields: [target_department_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   status TransferStatus @default(PENDING)
   reason String?
 
-  actioned_by_id String?   @db.Uuid
+  actioned_by_id String?   
   actioned_by    User?     @relation("TransferActionedBy", fields: [actioned_by_id], references: [id], onDelete: SetNull, onUpdate: Cascade)
   actioned_at    DateTime?
 
@@ -242,11 +241,11 @@ model TransferRequest {
 }
 
 model Booking {
-  id       String @id @default(uuid()) @db.Uuid
-  asset_id String @db.Uuid
+  id       String @id @default(uuid()) 
+  asset_id String 
   asset    Asset  @relation(fields: [asset_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
-  user_id String @db.Uuid
+  user_id String 
   user    User   @relation("AssetBooker", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   start_date DateTime
@@ -262,14 +261,14 @@ model Booking {
 }
 
 model MaintenanceRequest {
-  id       String @id @default(uuid()) @db.Uuid
-  asset_id String @db.Uuid
+  id       String @id @default(uuid()) 
+  asset_id String 
   asset    Asset  @relation(fields: [asset_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
-  requester_id String @db.Uuid
+  requester_id String 
   requester    User   @relation("MaintenanceRequester", fields: [requester_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
-  assigned_to_id String? @db.Uuid
+  assigned_to_id String? 
   assigned_to    User?   @relation("MaintenanceAssignee", fields: [assigned_to_id], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
   priority          Priority          @default(MEDIUM)
@@ -287,13 +286,13 @@ model MaintenanceRequest {
 }
 
 model AuditCycle {
-  id         String      @id @default(uuid()) @db.Uuid
+  id         String      @id @default(uuid()) 
   name       String
   start_date DateTime
   end_date   DateTime
   status     AuditStatus @default(OPEN)
 
-  auditor_id String @db.Uuid
+  auditor_id String 
   auditor    User   @relation("Auditor", fields: [auditor_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   audit_items AuditItem[]
@@ -303,11 +302,11 @@ model AuditCycle {
 }
 
 model AuditItem {
-  id             String     @id @default(uuid()) @db.Uuid
-  audit_cycle_id String     @db.Uuid
+  id             String     @id @default(uuid()) 
+  audit_cycle_id String     
   audit_cycle    AuditCycle @relation(fields: [audit_cycle_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
-  asset_id String @db.Uuid
+  asset_id String 
   asset    Asset  @relation(fields: [asset_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   verification_status VerificationStatus @default(VERIFIED)
@@ -322,8 +321,8 @@ model AuditItem {
 }
 
 model Notification {
-  id      String @id @default(uuid()) @db.Uuid
-  user_id String @db.Uuid
+  id      String @id @default(uuid()) 
+  user_id String 
   user    User   @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   title   String
@@ -337,8 +336,8 @@ model Notification {
 }
 
 model ActivityLog {
-  id      String @id @default(uuid()) @db.Uuid
-  user_id String @db.Uuid
+  id      String @id @default(uuid()) 
+  user_id String 
   user    User   @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   action     String
