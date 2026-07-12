@@ -1,0 +1,351 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ==========================================
+// ENUMS
+// ==========================================
+
+enum Role {
+  ADMIN
+  EMPLOYEE
+  ASSET_MANAGER
+  DEPARTMENT_HEAD
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum AssetStatus {
+  AVAILABLE
+  ALLOCATED
+  RESERVED
+  UNDER_MAINTENANCE
+  LOST
+  RETIRED
+  DISPOSED
+}
+
+enum AllocationStatus {
+  ACTIVE
+  RETURNED
+  OVERDUE
+}
+
+enum TransferStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum BookingStatus {
+  UPCOMING
+  ONGOING
+  COMPLETED
+  CANCELLED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum MaintenanceStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  ASSIGNED
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum AuditStatus {
+  OPEN
+  IN_PROGRESS
+  CLOSED
+}
+
+enum VerificationStatus {
+  VERIFIED
+  MISSING
+  DAMAGED
+}
+
+enum NotificationType {
+  BOOKING
+  MAINTENANCE
+  TRANSFER
+  RETURN
+  AUDIT
+}
+
+// ==========================================
+// MODELS
+// ==========================================
+
+model User {
+  id            String     @id @default(uuid()) @db.Uuid
+  email         String     @unique
+  password_hash String
+  name          String
+  role          Role       @default(EMPLOYEE)
+  status        UserStatus @default(ACTIVE)
+
+  department_id String     @db.Uuid
+  department    Department @relation("DepartmentUsers", fields: [department_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  // Relationships
+  created_assets       Asset[]              @relation("AssetCreator")
+  allocations          AssetAllocation[]    @relation("AllocatedTo")
+  allocated_assets     AssetAllocation[]    @relation("AssetAllocator")
+  raised_transfers     TransferRequest[]    @relation("TransferRequester")
+  actioned_transfers   TransferRequest[]    @relation("TransferActionedBy")
+  bookings             Booking[]            @relation("AssetBooker")
+  raised_maintenance   MaintenanceRequest[] @relation("MaintenanceRequester")
+  assigned_maintenance MaintenanceRequest[] @relation("MaintenanceAssignee")
+  audited_cycles       AuditCycle[]         @relation("Auditor")
+  notifications        Notification[]
+  activity_logs        ActivityLog[]
+
+  // Department head relationship (optional, one-to-one)
+  headed_department Department? @relation("DepartmentHead")
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([email])
+}
+
+model Department {
+  id   String @id @default(uuid()) @db.Uuid
+  name String @unique
+
+  // Self-referencing hierarchy for Parent-Child departments
+  parent_id         String?      @db.Uuid
+  parent_department Department?  @relation("DepartmentHierarchy", fields: [parent_id], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  child_departments Department[] @relation("DepartmentHierarchy")
+
+  // Department Head
+  head_id String? @unique @db.Uuid
+  head    User?   @relation("DepartmentHead", fields: [head_id], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  // Users in the department
+  users User[] @relation("DepartmentUsers")
+
+  // Transfer requests targeting this department
+  target_transfers TransferRequest[] @relation("TargetDepartment")
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model AssetCategory {
+  id          String  @id @default(uuid()) @db.Uuid
+  name        String  @unique
+  description String?
+  assets      Asset[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model Asset {
+  id          String      @id @default(uuid()) @db.Uuid
+  name        String
+  asset_tag   String      @unique // Matches asset_tag in controllers
+  description String?
+  status      AssetStatus @default(AVAILABLE)
+
+  category_id String        @db.Uuid
+  category    AssetCategory @relation(fields: [category_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  created_by String @db.Uuid
+  creator    User   @relation("AssetCreator", fields: [created_by], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  serial_number String?
+  purchase_date DateTime?
+  purchase_cost Decimal?
+  condition     String    @default("GOOD")
+  location      String?
+  is_bookable   Boolean   @default(false)
+  photo_url     String?
+
+  // Relationships
+  allocations          AssetAllocation[]
+  bookings             Booking[]
+  maintenance_requests MaintenanceRequest[]
+  audit_items          AuditItem[]
+  transfer_requests    TransferRequest[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([asset_tag])
+  @@index([category_id])
+}
+
+model AssetAllocation {
+  id       String @id @default(uuid()) @db.Uuid
+  asset_id String @db.Uuid
+  asset    Asset  @relation(fields: [asset_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  allocated_to_id String @db.Uuid
+  allocated_to    User   @relation("AllocatedTo", fields: [allocated_to_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  allocator_id String @db.Uuid
+  allocator    User   @relation("AssetAllocator", fields: [allocator_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  status       AllocationStatus @default(ACTIVE)
+  allocated_at DateTime         @default(now())
+  due_date     DateTime?
+  returned_at  DateTime?
+  notes        String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([asset_id])
+  @@index([allocated_to_id])
+}
+
+model TransferRequest {
+  id       String @id @default(uuid()) @db.Uuid
+  asset_id String @db.Uuid
+  asset    Asset  @relation(fields: [asset_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  requester_id String @db.Uuid
+  requester    User   @relation("TransferRequester", fields: [requester_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  target_department_id String     @db.Uuid
+  target_department    Department @relation("TargetDepartment", fields: [target_department_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  status TransferStatus @default(PENDING)
+  reason String?
+
+  actioned_by_id String?   @db.Uuid
+  actioned_by    User?     @relation("TransferActionedBy", fields: [actioned_by_id], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  actioned_at    DateTime?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([asset_id])
+  @@index([requester_id])
+}
+
+model Booking {
+  id       String @id @default(uuid()) @db.Uuid
+  asset_id String @db.Uuid
+  asset    Asset  @relation(fields: [asset_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  user_id String @db.Uuid
+  user    User   @relation("AssetBooker", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  start_date DateTime
+  end_date   DateTime
+  status     BookingStatus @default(UPCOMING)
+  purpose    String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([asset_id])
+  @@index([user_id])
+}
+
+model MaintenanceRequest {
+  id       String @id @default(uuid()) @db.Uuid
+  asset_id String @db.Uuid
+  asset    Asset  @relation(fields: [asset_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  requester_id String @db.Uuid
+  requester    User   @relation("MaintenanceRequester", fields: [requester_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  assigned_to_id String? @db.Uuid
+  assigned_to    User?   @relation("MaintenanceAssignee", fields: [assigned_to_id], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  priority          Priority          @default(MEDIUM)
+  status            MaintenanceStatus @default(PENDING)
+  issue_description String
+  resolution_notes  String?
+  scheduled_date    DateTime?
+  completed_at      DateTime?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([asset_id])
+  @@index([requester_id])
+}
+
+model AuditCycle {
+  id         String      @id @default(uuid()) @db.Uuid
+  name       String
+  start_date DateTime
+  end_date   DateTime
+  status     AuditStatus @default(OPEN)
+
+  auditor_id String @db.Uuid
+  auditor    User   @relation("Auditor", fields: [auditor_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  audit_items AuditItem[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model AuditItem {
+  id             String     @id @default(uuid()) @db.Uuid
+  audit_cycle_id String     @db.Uuid
+  audit_cycle    AuditCycle @relation(fields: [audit_cycle_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  asset_id String @db.Uuid
+  asset    Asset  @relation(fields: [asset_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  verification_status VerificationStatus @default(VERIFIED)
+  verified_at         DateTime?
+  notes               String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([audit_cycle_id])
+  @@index([asset_id])
+}
+
+model Notification {
+  id      String @id @default(uuid()) @db.Uuid
+  user_id String @db.Uuid
+  user    User   @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  title   String
+  message String
+  type    NotificationType
+  is_read Boolean          @default(false)
+
+  created_at DateTime @default(now())
+
+  @@index([user_id])
+}
+
+model ActivityLog {
+  id      String @id @default(uuid()) @db.Uuid
+  user_id String @db.Uuid
+  user    User   @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  action     String
+  details    String?
+  ip_address String?
+
+  created_at DateTime @default(now())
+
+  @@index([user_id])
+}
